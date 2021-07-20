@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Scheduler
+Bundle-SymbolicName: org.osate.analysis.mixedtrust.scheduler
+Bundle-Version: 1.0.0.qualifier
+Automatic-Module-Name: org.osate.analysis.mixedtrust.scheduler
+Bundle-RequiredExecutionEnvironment: JavaSE-11
+Export-Package: edu.cmu.sei.mtdigraph,
+ edu.cmu.sei.mtzsrm
