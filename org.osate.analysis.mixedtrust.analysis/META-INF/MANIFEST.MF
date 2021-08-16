@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Analysis
+Bundle-SymbolicName: org.osate.analysis.mixedtrust.analysis;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Automatic-Module-Name: org.osate.analysis.mixedtrust.analysis
+Bundle-RequiredExecutionEnvironment: JavaSE-11
+Require-Bundle: org.osate.analysis.mixedtrust.scheduler;bundle-version="1.0.0",
+ org.osate.pluginsupport;bundle-version="6.0.1",
+ org.osate.aadl2;bundle-version="4.0.2",
+ org.osate.aadl2.contrib;bundle-version="1.0.1",
+ org.osate.aadl2.modelsupport;bundle-version="6.0.1"
+Export-Package: org.osate.analysis.mixedtrust.contribution.mixedtrustproperties
