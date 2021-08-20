@@ -18,6 +18,7 @@ public class MixedTrustProperties {
 	public static final String MIXED_TRUST_PROPERTIES__NAME = "Mixed_Trust_Properties";
 	
 	public static final String MIXED_TRUST_TASKS__NAME = "Mixed_Trust_Tasks";
+	public static final String MIXED_TRUST_PROCESSOR__NAME = "Mixed_Trust_Processor";
 	
 	public static Optional<List<MixedTrustTask>> getMixedTrustTasks(NamedElement lookupContext) {
 		return getMixedTrustTasks(lookupContext, Optional.empty());
@@ -44,6 +45,32 @@ public class MixedTrustProperties {
 	
 	public static PropertyExpression getMixedTrustTasks_EObject(NamedElement lookupContext) {
 		String name = "Mixed_Trust_Properties::Mixed_Trust_Tasks";
+		Property property = Aadl2GlobalScopeUtil.get(lookupContext, Aadl2Package.eINSTANCE.getProperty(), name);
+		return lookupContext.getNonModalPropertyValue(property);
+	}
+	
+	public static Optional<MixedTrustBindings> getMixedTrustProcessor(NamedElement lookupContext) {
+		return getMixedTrustProcessor(lookupContext, Optional.empty());
+	}
+	
+	public static Optional<MixedTrustBindings> getMixedTrustProcessor(NamedElement lookupContext, Mode mode) {
+		return getMixedTrustProcessor(lookupContext, Optional.of(mode));
+	}
+	
+	public static Optional<MixedTrustBindings> getMixedTrustProcessor(NamedElement lookupContext, Optional<Mode> mode) {
+		String name = "Mixed_Trust_Properties::Mixed_Trust_Processor";
+		Property property = Aadl2GlobalScopeUtil.get(lookupContext, Aadl2Package.eINSTANCE.getProperty(), name);
+		try {
+			PropertyExpression value = CodeGenUtil.lookupProperty(property, lookupContext, mode);
+			PropertyExpression resolved = CodeGenUtil.resolveNamedValue(value, lookupContext, mode);
+			return Optional.of(new MixedTrustBindings(resolved, lookupContext, mode));
+		} catch (PropertyNotPresentException e) {
+			return Optional.empty();
+		}
+	}
+	
+	public static PropertyExpression getMixedTrustProcessor_EObject(NamedElement lookupContext) {
+		String name = "Mixed_Trust_Properties::Mixed_Trust_Processor";
 		Property property = Aadl2GlobalScopeUtil.get(lookupContext, Aadl2Package.eINSTANCE.getProperty(), name);
 		return lookupContext.getNonModalPropertyValue(property);
 	}

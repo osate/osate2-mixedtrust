@@ -1,9 +1,14 @@
+-- @codegen-package org.osate.analysis.mixedtrust.contribution.mixedtrustproperties
 property set Mixed_Trust_Properties is
 	Mixed_Trust_Task: type record (
 		-- Period of the mixed trust task.  Periods of the referenced Guest and Hyper task threads should not be set
 		Period: Time;
 		-- Deadline of the mixed trust task.  Periods of the referenced Guest and Hyper task threads should not be set
 		Deadline: Time;
+		
+		-- The Guest and Hyper task threads should be bound to different virtual processors representing
+		-- the guest OS and hypervisor environments.  These virtual processors, in turn, must be bound to the
+		-- physical processor;  
 		
 		-- Reference to the guest task thread.  Thread should only be referenced by a single mixed trust task
 		GuestTask: reference (Thread);
@@ -12,4 +17,21 @@ property set Mixed_Trust_Properties is
 	);
 	
 	Mixed_Trust_Tasks: list of Mixed_Trust_Properties::Mixed_Trust_Task applies to (System);
+	
+	
+	
+	-- Specifies the exact virtual processors that represent the Guest OS and hypervisor of a processor suited by
+	-- mixed trust scheduling.  Although AADL syntax does not require both fields of this record to have values,
+	-- we require that both fields be specified, and that furthermore, the referenced virtual processors must be 
+	-- bound to the same (physical) processor.
+	Mixed_Trust_Bindings: type record (
+		GuestOS: reference (virtual processor);
+		HyperVisor: reference (virtual processor);
+	);
+	
+	-- Used to mark a processor as being a mixed trust execution environment. Specifies the exact virtual processors
+	-- that represent the Guest OS and hypervisor.  The processor must have exactly two virtual processors bound to it,
+	-- via Actual_Processor_Binding, and they must be these two.  Furthermore, both fields of the Mixed_Trust_Bindings
+	-- record must be set.
+	Mixed_Trust_Processor: Mixed_Trust_Properties::Mixed_Trust_Bindings applies to (processor);
 end Mixed_Trust_Properties;
