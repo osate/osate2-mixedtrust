@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Ui
+Bundle-Localization: plugin
+Bundle-SymbolicName: org.osate.analysis.mixedtrust.analysis.ui;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: org.osate.analysis.mixedtrust.analysis.ui.Activator
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.osate.analysis.mixedtrust.analysis;bundle-version="1.0.0",
+ org.osate.ui;bundle-version="6.1.1"
+Bundle-RequiredExecutionEnvironment: JavaSE-11
+Automatic-Module-Name: org.osate.analysis.mixedtrust.analysis.ui
+Bundle-ActivationPolicy: lazy
