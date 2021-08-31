@@ -12,7 +12,7 @@ import org.eclipse.emf.common.util.BasicEList;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 import org.osate.aadl2.ComponentCategory;
-import org.osate.aadl2.RecordValue;
+import org.osate.aadl2.ListValue;
 import org.osate.aadl2.contrib.deployment.DeploymentProperties;
 import org.osate.aadl2.contrib.timing.TimingProperties;
 import org.osate.aadl2.instance.ComponentInstance;
@@ -125,7 +125,8 @@ public final class MixedTrustAnalysis {
 				 */
 				if (processor.isActive(som)) {
 					MixedTrustProperties.getMixedTrustProcessor(processor).map(mixedTrustBindings -> {
-						checkMixedTrustBindings(somResult, processor, mixedTrustBindings, domains);
+						final EObject where = MixedTrustProperties.getMixedTrustProcessor_EObject(processor);
+						checkMixedTrustBindings(somResult, where, processor, mixedTrustBindings, domains);
 						return null;
 					});
 				}
@@ -135,8 +136,11 @@ public final class MixedTrustAnalysis {
 			for (final ComponentInstance system : systemInstance.getAllComponentInstances(ComponentCategory.SYSTEM)) {
 				if (system.isActive(som)) {
 					MixedTrustProperties.getMixedTrustTasks(system).map(listOfTasks -> {
+						final var iter = ((ListValue) MixedTrustProperties.getMixedTrustTasks_EObject(system))
+								.getOwnedListElements()
+								.iterator();
 						for (final MixedTrustTask mixedTrustTask : listOfTasks) {
-							checkMixedTrustTask(somResult, mixedTrustTask, domains);
+							checkMixedTrustTask(somResult, iter.next(), mixedTrustTask, domains);
 						}
 						return null;
 					});
@@ -170,32 +174,28 @@ public final class MixedTrustAnalysis {
 	// === Consistency Checking Methods
 	// ======================================================================
 
-	private void checkMixedTrustBindings(final Result result, final ComponentInstance processor, final MixedTrustBindings mixedTrustBindings,
-			final Domains domains) {
+	private void checkMixedTrustBindings(final Result result, final EObject where, final ComponentInstance processor,
+			final MixedTrustBindings mixedTrustBindings, final Domains domains) {
 		final InstanceObject guestOS = mixedTrustBindings.getGuestos().orElse(null);
 		final InstanceObject hyperVisor = mixedTrustBindings.getHypervisor().orElse(null);
 
 		if (guestOS == null) {
-			error(result, mixedTrustBindings.toPropertyExpression(processor.eResource().getResourceSet()),
-					"Mixed_Trust_Bindings must specifiy a value for field GuestOS");
+			error(result, where, "Mixed_Trust_Bindings must specifiy a value for field GuestOS");
 		} else {
 			if (!getProcessorBindings(guestOS).contains(processor)) {
 				// error: not directly bound to processor
-				error(result, mixedTrustBindings.toPropertyExpression(processor.eResource().getResourceSet()),
-						"Virtual processor referenced by field GuestOS is not bound to processor "
-								+ processor.getName());
+				error(result, where, "Virtual processor referenced by field GuestOS is not bound to processor "
+						+ processor.getName());
 			}
 		}
 
 		if (hyperVisor == null) {
-			error(result, mixedTrustBindings.toPropertyExpression(processor.eResource().getResourceSet()),
-					"Mixed_Trust_Bindings must specifiy a value for field HyperVisor");
+			error(result, where, "Mixed_Trust_Bindings must specifiy a value for field HyperVisor");
 		} else {
 			if (!getProcessorBindings(hyperVisor).contains(processor)) {
 				// error: not directly bound to processor
-				error(result, mixedTrustBindings.toPropertyExpression(processor.eResource().getResourceSet()),
-						"Virtual processor referenced by field HyperVisor is not bound to processor "
-								+ processor.getName());
+				error(result, where, "Virtual processor referenced by field HyperVisor is not bound to processor "
+						+ processor.getName());
 			}
 		}
 
@@ -213,26 +213,23 @@ public final class MixedTrustAnalysis {
 		}
 	}
 
-	private void checkMixedTrustTask(final Result result, final MixedTrustTask mtt, final Domains domains) {
-		final RecordValue diagnosticLocation = mtt
-				.toPropertyExpression(result.getModelElement().eResource().getResourceSet());
+	private void checkMixedTrustTask(final Result result, final EObject where, final MixedTrustTask mtt,
+			final Domains domains) {
 		if (mtt.getPeriod().isEmpty()) {
-			error(result, diagnosticLocation,
-					"Mixed_Trust_Task must specify a value for field Period");
+			error(result, where, "Mixed_Trust_Task must specify a value for field Period");
 		}
 		if (mtt.getDeadline().isEmpty()) {
-			error(result, diagnosticLocation,
-					"Mixed_Trust_Task must specify a value for field Deadline");
+			error(result, where, "Mixed_Trust_Task must specify a value for field Deadline");
 		}
 
 		final InstanceObject guestTask = mtt.getGuesttask().orElse(null);
 		final InstanceObject hyperTask = mtt.getHypertask().orElse(null);
-		final InstanceObject guestOsBinding = checkTask(result, diagnosticLocation, guestTask, domains::isGuestOS,
+		final InstanceObject guestOsBinding = checkTask(result, where, guestTask, domains::isGuestOS,
 				"GuestOS");
-		final InstanceObject hyperVisorBinding = checkTask(result, diagnosticLocation, hyperTask, domains::isHyperVisor,
+		final InstanceObject hyperVisorBinding = checkTask(result, where, hyperTask, domains::isHyperVisor,
 				"HyperVisor");
 		if (guestOsBinding != null && hyperVisorBinding != null && guestOsBinding != hyperVisorBinding) {
-			error(result, diagnosticLocation,
+			error(result, where,
 					"GuestOS and HyperVisor are bound to different processors");
 		}
 	}
