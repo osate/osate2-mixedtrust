@@ -182,21 +182,40 @@ public final class MixedTrustAnalysis {
 		if (guestOS == null) {
 			error(result, where, "Mixed_Trust_Bindings must specifiy a value for field GuestOS");
 		} else {
-			if (!getProcessorBindings(guestOS).contains(processor)) {
+			final List<InstanceObject> processorBindings = getProcessorBindings(guestOS);
+			if (!processorBindings.contains(processor)) {
 				// error: not directly bound to processor
-				error(result, where, "Virtual processor referenced by field GuestOS is not bound to processor "
+				error(result, where,
+						"Virtual processor " + guestOS.getName()
+								+ " referenced by field GuestOS is not bound to processor "
 						+ processor.getName());
+			}
+			if (countBoundProcessors(processorBindings) > 1) {
+				error(result, where, "Virtual processor " + guestOS.getName()
+						+ " referenced by field GuestOS is bound to more than 1 processor");
+
 			}
 		}
 
 		if (hyperVisor == null) {
 			error(result, where, "Mixed_Trust_Bindings must specifiy a value for field HyperVisor");
 		} else {
-			if (!getProcessorBindings(hyperVisor).contains(processor)) {
+			List<InstanceObject> processorBindings = getProcessorBindings(hyperVisor);
+			if (!processorBindings.contains(processor)) {
 				// error: not directly bound to processor
-				error(result, where, "Virtual processor referenced by field HyperVisor is not bound to processor "
+				error(result, where, "Virtual processor " + hyperVisor.getName()
+						+ " referenced by field HyperVisor is not bound to processor "
 						+ processor.getName());
 			}
+			if (countBoundProcessors(processorBindings) > 1) {
+				error(result, where, "Virtual processor " + hyperVisor.getName()
+						+ " referenced by field HyperVisor is bound to more than 1 processor");
+
+			}
+		}
+
+		if (guestOS != null && guestOS == hyperVisor) {
+			error(result, where, "GuestOS and HyperVisor specify the same value " + guestOS.getName());
 		}
 
 		if (guestOS != null && hyperVisor != null) {
@@ -211,6 +230,19 @@ public final class MixedTrustAnalysis {
 			domains.addGuestOS(guestOS);
 			domains.addHyperVisor(hyperVisor);
 		}
+	}
+
+	private int countBoundProcessors(final List<InstanceObject> bindings) {
+		int count = 0;
+		for (final InstanceObject io : bindings) {
+			if (io instanceof ComponentInstance) {
+				final var cc = ((ComponentInstance) io).getCategory();
+				if (cc == ComponentCategory.VIRTUAL_PROCESSOR || cc == ComponentCategory.PROCESSOR) {
+					count += 1;
+				}
+			}
+		}
+		return count;
 	}
 
 	private void checkMixedTrustTask(final Result result, final EObject where, final MixedTrustTask mtt,
@@ -228,9 +260,13 @@ public final class MixedTrustAnalysis {
 				"GuestOS");
 		final InstanceObject hyperVisorBinding = checkTask(result, where, hyperTask, domains::isHyperVisor,
 				"HyperVisor");
-		if (guestOsBinding != null && hyperVisorBinding != null && guestOsBinding != hyperVisorBinding) {
-			error(result, where,
-					"GuestOS and HyperVisor are bound to different processors");
+		if (guestOsBinding != null && hyperVisorBinding != null) {
+			final List<InstanceObject> boundProcs1 = getProcessorBindings(guestOsBinding);
+			final List<InstanceObject> boundProcs2 = getProcessorBindings(hyperVisorBinding);
+
+			if (boundProcs1.size() == 1 && boundProcs2.size() == 1 && boundProcs1.get(0) != boundProcs2.get(0)) {
+				error(result, where, "Mixed_Trust_Task's GuestOS and HyperVisor are bound to different processors");
+			}
 		}
 	}
 
@@ -241,24 +277,29 @@ public final class MixedTrustAnalysis {
 			return null;
 		} else {
 			if (TimingProperties.getPeriod(task).isPresent()) {
-				warning(result, where, "Referenced thread " + task.getName() + " specifies a Period value");
+				warning(result, where, "Mixed_Trust_Task's referenced " + fieldName + " thread " + task.getName()
+						+ " specifies a Period value");
 			}
 			if (TimingProperties.getDeadline(task).isPresent()) {
-				warning(result, where, "Referenced thread " + task.getName() + " specifies a Deadline value");
+				warning(result, where, "Mixed_Trust_Task's referenced " + fieldName + " thread " + task.getName()
+						+ " specifies a Deadline value");
 			}
 
 			final List<InstanceObject> boundProcs = getProcessorBindings(task);
 			if (boundProcs.isEmpty()) {
-				error(result, where, "Referenced thread " + task.getName() + " is not bound");
+				error(result, where,
+						"Mixed_Trust_Task's referenced " + fieldName + " thread " + task.getName() + " is not bound");
 				return null;
 			} else if (boundProcs.size() > 1) {
-				error(result, where, "Referenced thread " + task.getName() + " bound to more than one component");
+				error(result, where, "Mixed_Trust_Task's referenced " + fieldName + " thread " + task.getName()
+						+ " bound to more than one component");
 				return null;
 			} else {
 				final InstanceObject boundTo = boundProcs.get(0);
 				if (!checkTaskMembership.apply(boundTo)) {
 					error(result, where,
-							"Referenced thread " + task.getName() + " is not bound to a declared " + fieldName);
+							"Mixed_Trust_Task's referenced " + fieldName + " thread " + task.getName()
+									+ " is not bound to a declared " + fieldName);
 					return null;
 				}
 				return boundTo;
@@ -303,7 +344,7 @@ public final class MixedTrustAnalysis {
 		if (bindinglist.isEmpty() && io instanceof ComponentInstance
 				&& ((ComponentInstance) io).getCategory() == ComponentCategory.VIRTUAL_PROCESSOR) {
 			final ComponentInstance parent = io.getContainingComponentInstance();
-			if (parent.getCategory() == ComponentCategory.PROCESS
+			if (parent.getCategory() == ComponentCategory.PROCESSOR
 					|| parent.getCategory() == ComponentCategory.VIRTUAL_PROCESSOR) {
 				return Collections.singletonList(parent);
 			}
