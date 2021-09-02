@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Mixed Trust Scheduler Tests
-Bundle-SymbolicName: org.osate.analysis.mixedtrust.analysis.test
+Bundle-SymbolicName: org.osate.analysis.mixedtrust.analysis.tests
 Bundle-Version: 1.0.0.qualifier
 Automatic-Module-Name: org.osate.analysis.mixedtrust.analysis.test
 Bundle-RequiredExecutionEnvironment: JavaSE-11
