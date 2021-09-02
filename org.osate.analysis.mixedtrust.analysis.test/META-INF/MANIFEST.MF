@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Mixed Trust Scheduler Tests
+Bundle-SymbolicName: org.osate.analysis.mixedtrust.analysis.test
+Bundle-Version: 1.0.0.qualifier
+Automatic-Module-Name: org.osate.analysis.mixedtrust.analysis.test
+Bundle-RequiredExecutionEnvironment: JavaSE-11
+Require-Bundle: com.google.guava,
+ org.osate.aadl2;bundle-version="1.0.0",
+ org.osate.xtext.aadl2,
+ org.osate.aadl2.instantiation;bundle-version="1.0.0",
+ org.osate.results;bundle-version="1.0.0",
+ org.osate.testsupport;bundle-version="1.0.0",
+ org.osate.analysis.mixedtrust.analysis;bundle-version="1.0.0"
+Bundle-Vendor: CMU/SEI
