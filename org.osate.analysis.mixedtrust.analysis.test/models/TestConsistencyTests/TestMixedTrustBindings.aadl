@@ -1,0 +1,422 @@
+package TestMixedTrustBindings
+public
+	with Mixed_Trust_Properties;
+	
+	processor MyProc
+	end MyProc;
+
+	virtual processor MyOS	
+	end MyOS;
+	
+	virtual processor MyHV
+	end MyHV;
+	
+	virtual processor Other
+	end Other;
+	
+	processor implementation MyProc.neither
+	end MyProc.neither;
+	
+	processor implementation MyProc.justOS
+		subcomponents
+			GuestOS: virtual processor MyOS;
+	end MyProc.justOS;
+	
+	processor implementation MyProc.justHV
+		subcomponents
+			HyperVisor: virtual processor MyHV;
+	end MyProc.justHV;
+	
+	processor implementation MyProc.both
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+	end MyProc.both;
+	
+	processor implementation MyProc.three
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			Other: virtual processor Other;
+	end MyProc.three;
+	
+	-- --------------------------------------
+	
+	system top
+	end top;
+
+	-- --------------------------------------
+	
+	-- Test the cases where GuestOS and HyperVisor are both specified and bound to the processor
+	
+	system implementation top.t01
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to GuestOS, HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t01;
+	
+	system implementation top.t02
+		subcomponents
+			HyperVisor: virtual processor MyHV;
+			
+			p: processor MyProc.justOS;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(p.GuestOS); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t02;
+	
+	system implementation top.t03
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			
+			p: processor MyProc.justHV;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to GuestOS;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(p.HyperVisor);] applies to p;					
+	end top.t03;
+	
+	system implementation top.t04
+		subcomponents
+			p: processor MyProc.both;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(p.GuestOS); HyperVisor => reference(p.HyperVisor);] applies to p;					
+	end top.t04;
+
+	-- --------------------------------------
+	
+	-- Test the case where GuestOS is not specified; hyperVisor is specified and bound
+	
+	system implementation top.t11
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t11;
+	
+	system implementation top.t12
+		subcomponents
+			HyperVisor: virtual processor MyHV;
+			
+			p: processor MyProc.justOS;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t12;
+	
+	system implementation top.t13
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			
+			p: processor MyProc.justHV;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [HyperVisor => reference(p.HyperVisor);] applies to p;					
+	end top.t13;
+	
+	system implementation top.t14
+		subcomponents
+			p: processor MyProc.both;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [HyperVisor => reference(p.HyperVisor);] applies to p;					
+	end top.t14;
+
+	-- --------------------------------------
+	
+	-- Test the case where HyperVisor is not specified; GuestOS is specified and bound
+	
+	system implementation top.t21
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to GuestOS;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS);] applies to p;					
+	end top.t21;
+	
+	system implementation top.t22
+		subcomponents
+			HyperVisor: virtual processor MyHV;
+			
+			p: processor MyProc.justOS;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(p.GuestOS);] applies to p;					
+	end top.t22;
+	
+	system implementation top.t23
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			
+			p: processor MyProc.justHV;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to GuestOS;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS);] applies to p;					
+	end top.t23;
+	
+	system implementation top.t24
+		subcomponents
+			p: processor MyProc.both;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(p.GuestOS);] applies to p;					
+	end top.t24;
+
+	-- --------------------------------------
+	-- Test the cases where GuestOS bound to something that isn't the GuestOS or HyperVisor
+	
+	system implementation top.t31
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			Other: virtual processor Other;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(Other); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t31;
+	
+	system implementation top.t33
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			Other: virtual processor Other;
+			
+			p: processor MyProc.justHV;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(Other); HyperVisor => reference(p.HyperVisor);] applies to p;					
+	end top.t33;
+
+	-- --------------------------------------
+	-- Test the cases where HyperVisor bound to something that isn't the GuestOS or HyperVisor
+	
+	system implementation top.t41
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			Other: virtual processor Other;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to GuestOS;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(Other);] applies to p;					
+	end top.t41;
+	
+	system implementation top.t42
+		subcomponents
+			HyperVisor: virtual processor MyHV;
+			Other: virtual processor Other;
+			
+			p: processor MyProc.justOS;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(p.GuestOS); HyperVisor => reference(Other);] applies to p;					
+	end top.t42;
+	
+	-- --------------------------------------
+
+	-- Test the case where the GuestOS and HyperVisor are set to the same thing
+	
+	system implementation top.t51
+		subcomponents
+			Other: virtual processor Other;
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to Other;
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(Other); HyperVisor => reference(Other);] applies to p;					
+	end top.t51;
+	
+	-- --------------------------------------
+
+	-- Test the case where extra virtual processors are bound to the processor
+	
+	system implementation top.t61
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			Other: virtual processor Other;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to GuestOS, HyperVisor, Other;
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t61;
+	
+	system implementation top.t62
+		subcomponents
+			p: processor MyProc.three;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(p.GuestOS); HyperVisor => reference(p.HyperVisor);] applies to p;					
+	end top.t62;
+	
+	system implementation top.t63
+		subcomponents
+			Other2: virtual processor Other;
+
+			p: processor MyProc.three;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to Other2;
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(p.GuestOS); HyperVisor => reference(p.HyperVisor);] applies to p;					
+	end top.t63;
+	
+	-- --------------------------------------
+	
+	-- Test the cases where GuestOS is bound to more than one processor: one extra proc, one extra virtual proc, and one of each
+	
+	system implementation top.t71
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			
+			OtherProc: processor MyProc;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p), reference(OtherProc)) applies to GuestOS;
+			Actual_Processor_Binding => (reference(p)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t71;
+	
+	system implementation top.t72
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			
+			OtherVP: virtual processor MyOs;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p), reference(OtherVP)) applies to GuestOS;
+			Actual_Processor_Binding => (reference(p)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t72;
+	
+	system implementation top.t73
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			
+			OtherProc: processor MyProc;
+			OtherVP: virtual processor MyOs;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p), reference(OtherProc), reference(OtherVP)) applies to GuestOS;
+			Actual_Processor_Binding => (reference(p)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t73;
+
+	-- --------------------------------------
+	
+	-- Test the cases where HyperVisor is bound to more than one processor: one extra proc, one extra virtual proc, and one of each
+	
+	system implementation top.t81
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			
+			OtherProc: processor MyProc;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to GuestOS;
+			Actual_Processor_Binding => (reference(p), reference(OtherProc)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t81;
+	
+	system implementation top.t82
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			
+			OtherVP: virtual processor MyOs;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to GuestOS;
+			Actual_Processor_Binding => (reference(p), reference(OtherVP)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t82;
+	
+	system implementation top.t83
+		subcomponents
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			
+			OtherProc: processor MyProc;
+			OtherVP: virtual processor MyOs;
+			
+			p: processor MyProc.neither;
+		properties
+			Actual_Processor_Binding => (reference(p)) applies to GuestOS;
+			Actual_Processor_Binding => (reference(p), reference(OtherProc), reference(OtherVP)) applies to HyperVisor;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to p;					
+	end top.t83;
+
+	-- --------------------------------------
+	
+	system TEST
+	end TEST;
+	
+	system implementation TEST.tests
+		subcomponents
+			t01: system top.t01;
+			t02: system top.t02;
+			t03: system top.t03;
+			t04: system top.t04;
+
+			t11: system top.t11;
+			t12: system top.t12;
+			t13: system top.t13;
+			t14: system top.t14;
+
+			t21: system top.t21;
+			t22: system top.t22;
+			t23: system top.t23;
+			t24: system top.t24;
+
+			t31: system top.t31;
+			t33: system top.t33;
+
+			t41: system top.t41;
+			t42: system top.t42;
+			
+			t51: system top.t51;
+			
+			t61: system top.t61;
+			t62: system top.t62;
+			t63: system top.t63;
+			
+			t71: system top.t71;
+			t72: system top.t72;
+			t73: system top.t73;
+			
+			t81: system top.t81;
+			t82: system top.t82;
+			t83: system top.t83;
+	end TEST.tests;
+
+--			Mixed_Trust_Properties::Mixed_Trust_Processor => [hyperVisor => reference(hypervisor);] applies to p_noGuest;					
+--			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(guestOs);] applies to p_noHypervisor;					
+end TestMixedTrustBindings;

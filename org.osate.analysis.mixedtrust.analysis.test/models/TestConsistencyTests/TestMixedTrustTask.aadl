@@ -1,0 +1,365 @@
+package TestMixedTrustTask
+public
+	with Mixed_Trust_Properties;
+	
+	processor MyProc
+	end MyProc;
+
+	virtual processor MyOS	
+	end MyOS;
+	
+	virtual processor MyHV
+	end MyHV;
+	
+	virtual processor Other
+	end Other;
+	
+	thread T
+	end T;
+	
+	process MyProcess
+	end MyProcess;
+	
+	process implementation MyProcess.i
+		subcomponents
+			t1: thread T;
+			t2: thread T;
+	end MyProcess.i;
+	
+--	virtual processor Other
+--	end Other;
+
+	system S	
+	end S;
+	
+	system implementation S.i
+		subcomponents
+			P: processor MyProc;
+			GuestOS: virtual processor MyOS;
+			HyperVisor: virtual processor MyHV;
+			theProcess: process MyProcess.i;
+		properties
+			Actual_Processor_Binding => (reference(P)) applies to GuestOS, HyperVisor;			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to p;
+	end S.i;
+	
+	-- No errors
+	system implementation S.test01 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test01;
+	
+	-- Error: Missing Period
+	system implementation S.test02 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test02;
+	
+	-- Error: Missing Deadline
+	system implementation S.test03 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test03;
+	
+	-- Error: Missing GuestTask
+	system implementation S.test04 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; HyperTask => reference(theProcess.t2);]);
+	end S.test04;
+	
+	-- Error: Missing HyperVisor
+	system implementation S.test05 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1);]);
+	end S.test05;
+	
+	-- Error: GuestOs and HyperVisor bound to different processors #1 - Error in how the GuestOS and HV are configured, they are put on different processors
+	system implementation S.test06 extends S.i
+		subcomponents
+			SecondProc: processor MyProc;
+		properties
+			Actual_Processor_Binding => (reference(SecondProc)) applies to HyperVisor;			
+			
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test06;
+
+	-- Error: GuestOs and HyperVisor bound to different processors #2 - There are two processors configured for mixed trust tasks, and a task is declared to run partly on each
+	system implementation S.test07 extends S.i
+		subcomponents
+			P2: processor MyProc;
+			GuestOS2: virtual processor MyOS;
+			HyperVisor2: virtual processor MyHV;
+		properties
+			Actual_Processor_Binding => (reference(P2)) applies to GuestOS2, HyperVisor2;			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOs => reference(GuestOS2); HyperVisor => reference(HyperVisor2);] applies to p2;
+		
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor2)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test07;
+	
+	-- Error: GuestOS task thread is not bound
+	system implementation S.test08 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test08;
+	
+	-- Error: HyperThread task thread is not bound
+	system implementation S.test09 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test09;
+	
+	-- Error: GuestOS task thread is bound to more than one thing (processor)
+	system implementation S.test10 extends S.i
+		subcomponents
+			P2: processor MyProc;
+		properties
+			Actual_Processor_Binding => (reference(GuestOS), reference(P2)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test10;
+	
+	-- Error: GuestOS task thread is bound to more than one thing (processor)
+	system implementation S.test11 extends S.i
+		subcomponents
+			GuestOS2: virtual processor MyOS;
+		properties
+			Actual_Processor_Binding => (reference(GuestOS), reference(GuestOS2)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test11;
+	
+	-- Error: GuestOS task thread is bound to more than one thing (processor and vp)
+	system implementation S.test12 extends S.i
+		subcomponents
+			P2: processor MyProc;
+			GuestOS2: virtual processor MyOS;
+		properties
+			Actual_Processor_Binding => (reference(GuestOS), reference(P2), reference(GuestOS2)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test12;
+
+	
+	-- Error: HyperVisor task thread is bound to more than one thing (processor)
+	system implementation S.test13 extends S.i
+		subcomponents
+			P2: processor MyProc;
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor), reference(P2)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test13;
+	
+	-- Error: HyperVisor task thread is bound to more than one thing (processor)
+	system implementation S.test14 extends S.i
+		subcomponents
+			HyperVisor2: virtual processor MyHV;
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor), reference(HyperVisor2)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test14;
+	
+	-- Error: HyperVisor task thread is bound to more than one thing (processor and vp)
+	system implementation S.test15 extends S.i
+		subcomponents
+			P2: processor MyProc;
+			HyperVisor2: virtual processor MyHV;
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor), reference(P2), reference(HyperVisor2)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test15;
+	
+	-- Warning: GuestOS Thread specifies a period
+	system implementation S.test21 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			-- N.B. Also triggers warning on Deadline because Deadline has the period as a default value
+			Period => 5ms applies to theProcess.t1;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test21;
+	
+	-- Warning: GuestOS Thread specifies a deadline
+	system implementation S.test22 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Deadline => 5ms applies to theProcess.t1;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test22;
+	
+	-- Warning: HyperTask Thread specifies a period
+	system implementation S.test23 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			-- N.B. Also triggers warning on Deadline because Deadline has the period as a default value
+			Period => 5ms applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test23;
+	
+	-- Warning: HyperVisor Thread specifies a deadline
+	system implementation S.test24 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Deadline => 5ms applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test24;
+	
+	-- Warning: Both HyperVisor and GuestOS task threads specify values because they inherit from Processor
+	system implementation S.test25 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			-- N.B. Also triggers warning on Deadline because Deadline has the period as a default value
+			Period => 5ms applies to theProcess;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test25;
+	
+	-- Warning: Both HyperVisor and GuestOS task threads specify values because they inherit from Processor
+	system implementation S.test26 extends S.i
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Deadline => 5ms applies to theProcess;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test26;
+	
+	-- Error: GuestOS task is not bound to a guest os vp
+	system implementation S.test31 extends S.i
+		subcomponents
+			OtherVP: virtual processor Other;
+		properties
+			Actual_Processor_Binding => (reference(OtherVP)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test31;
+	
+	-- Error: HyperVisor task is not bound to a guest os vp
+	system implementation S.test32 extends S.i
+		subcomponents
+			OtherVP: virtual processor Other;
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(OtherVP)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test32;
+	
+	-- Error: GuestOS task is not bound to a guest os vp
+	system implementation S.test33 extends S.i
+		subcomponents
+			OtherVP: virtual processor Other;
+		properties
+			Actual_Processor_Binding => (reference(OtherVP)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(OtherVP)) applies to theProcess.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
+	end S.test33;
+	
+	---
+	
+	system TESTS
+	end TESTS;
+	
+	system implementation TESTS.i
+		subcomponents
+			t01: system S.test01;
+			t02: system S.test02;
+			t03: system S.test03;
+			t04: system S.test04;
+			t05: system S.test05;
+			t06: system S.test06;
+			t07: system S.test07;
+			t08: system S.test08;
+			t09: system S.test09;
+			t10: system S.test10;
+			t11: system S.test11;
+			t12: system S.test12;
+			t13: system S.test13;
+			t14: system S.test14;
+			t15: system S.test15;
+
+			t21: system S.test21;
+			t22: system S.test22;
+			t23: system S.test23;
+			t24: system S.test24;
+			t25: system S.test25;
+			t26: system S.test26;
+
+			t31: system S.test31;
+			t32: system S.test32;
+			t33: system S.test33;
+	end TESTS.i;
+end TestMixedTrustTask;
