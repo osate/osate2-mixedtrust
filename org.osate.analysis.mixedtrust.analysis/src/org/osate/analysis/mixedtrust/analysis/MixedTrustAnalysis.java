@@ -1,9 +1,12 @@
 package org.osate.analysis.mixedtrust.analysis;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -89,6 +92,9 @@ public final class MixedTrustAnalysis {
 	private static final String ERR_MIXED_TRUST_TASK_UNBOUND_THREAD = "Mixed_Trust_Task's referenced %s thread %s is not bound";
 	private static final String ERR_MIXED_TRUST_TASK_BOUND_TO_DIFFERENT_PROCESSORS = "Mixed_Trust_Task's GuestTask and HyperTask are bound to different processors";
 	private static final String ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD = "Mixed_Trust_Task must specify a value for field %s";
+	private static final String ERR_MIXED_TRUST_TASK_NO_EXECUTION_TIME = "Mixed_Trust_Task's referenced %s thread %s does not have an association for Compute_Execution_Time";
+
+	private static final String ERR_BOUND_BUT_NOT_IDENTIFIED = "%s is bound to %s %s but is not identified in a Mixed_Trust_Task record";
 
 	private static final String WARNING_MIXED_TRUST_TASK_SPECIFIES_VALUE = "Mixed_Trust_Task's referenced %s thread %s specifies a %s value";
 
@@ -175,6 +181,9 @@ public final class MixedTrustAnalysis {
 					});
 				}
 			}
+
+			/* Check that nothing extra is bound to the GuestOS and hypervisors */
+			domains.checkForExtraBindings(systemInstance, somResult);
 
 			// TODO: Errors (but not warnings) prevent scheduling analysis
 
@@ -285,8 +294,10 @@ public final class MixedTrustAnalysis {
 		final InstanceObject guestTask = mtt.getGuesttask().orElse(null);
 		final InstanceObject hyperTask = mtt.getHypertask().orElse(null);
 		final InstanceObject guestOsBinding = checkTask(result, where, guestTask, domains::isGuestOS,
+				domains::addBoundGuestTask,
 				GUEST_TASK);
 		final InstanceObject hyperVisorBinding = checkTask(result, where, hyperTask, domains::isHyperVisor,
+				domains::addBoundHypertTask,
 				HYPER_TASK);
 		if (guestOsBinding != null && hyperVisorBinding != null) {
 			final List<InstanceObject> boundProcs1 = getProcessorBindings(guestOsBinding);
@@ -304,11 +315,18 @@ public final class MixedTrustAnalysis {
 	}
 
 	private InstanceObject checkTask(final Result result, final EObject where, final InstanceObject task,
-			final Function<InstanceObject, Boolean> checkTaskMembership, String fieldName) {
+			final Function<InstanceObject, Boolean> checkTaskMembership,
+			final BiFunction<InstanceObject, InstanceObject, Boolean> addBoundTask, final String fieldName) {
 		if (task == null) {
 			error(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, fieldName);
 			return null;
 		} else {
+			boolean isOkay = true;
+
+			if (TimingProperties.getComputeExecutionTime(task).isEmpty()) {
+				error(result, where, ERR_MIXED_TRUST_TASK_NO_EXECUTION_TIME, fieldName, task.getName());
+				isOkay = false;
+			}
 			if (TimingProperties.getPeriod(task).isPresent()) {
 				warning(result, where, WARNING_MIXED_TRUST_TASK_SPECIFIES_VALUE, fieldName, task.getName(), PERIOD);
 			}
@@ -322,15 +340,21 @@ public final class MixedTrustAnalysis {
 				return null;
 			} else if (boundProcs.size() > 1) {
 				error(result, where, ERR_MIXED_TRUST_TASK_THREAD_BOUND_TO_MORE_THAN_ONE, fieldName, task.getName());
+
+				for (final InstanceObject p : boundProcs) {
+					addBoundTask.apply(p, task);
+				}
 				return null;
 			} else {
 				final InstanceObject boundTo = boundProcs.get(0);
 				if (!checkTaskMembership.apply(boundTo)) {
 					error(result, where, ERR_MIXED_TRUST_TASK_THREAD_NOT_BOUND_TO_RECOGNIZED, fieldName, task.getName(),
 							fieldName);
-					return null;
+					isOkay = false;
+				} else {
+					addBoundTask.apply(boundTo, task);
 				}
-				return boundTo;
+				return isOkay ? boundTo : null;
 			}
 		}
 	}
@@ -426,24 +450,95 @@ public final class MixedTrustAnalysis {
 
 	// ======================================================================
 
+//	private static final class Domains {
+//		private final Set<InstanceObject> guestOSes = new HashSet<>();
+//		private final Set<InstanceObject> hyperVisors = new HashSet<>();
+//
+//		public void addGuestOS(final InstanceObject guestOS) {
+//			guestOSes.add(guestOS);
+//		}
+//
+//		public void addHyperVisor(final InstanceObject hyperVisor) {
+//			hyperVisors.add(hyperVisor);
+//		}
+//
+//		public boolean isGuestOS(final InstanceObject task) {
+//			return guestOSes.contains(task);
+//		}
+//
+//		public boolean isHyperVisor(final InstanceObject task) {
+//			return hyperVisors.contains(task);
+//		}
+//	}
+
 	private static final class Domains {
-		private final Set<InstanceObject> guestOSes = new HashSet<>();
-		private final Set<InstanceObject> hyperVisors = new HashSet<>();
+		private final Map<InstanceObject, Set<InstanceObject>> guestOSes = new HashMap<>();
+		private final Map<InstanceObject, Set<InstanceObject>> hyperVisors = new HashMap<>();
 
 		public void addGuestOS(final InstanceObject guestOS) {
-			guestOSes.add(guestOS);
+			guestOSes.put(guestOS, new HashSet<>());
 		}
 
 		public void addHyperVisor(final InstanceObject hyperVisor) {
-			hyperVisors.add(hyperVisor);
+			hyperVisors.put(hyperVisor, new HashSet<>());
 		}
 
 		public boolean isGuestOS(final InstanceObject task) {
-			return guestOSes.contains(task);
+			return guestOSes.containsKey(task);
 		}
 
 		public boolean isHyperVisor(final InstanceObject task) {
-			return hyperVisors.contains(task);
+			return hyperVisors.containsKey(task);
+		}
+
+		public boolean addBoundGuestTask(final InstanceObject guestOS, final InstanceObject guestTask) {
+			final Set<InstanceObject> taskSet = guestOSes.get(guestOS);
+			if (taskSet != null) {
+				taskSet.add(guestTask);
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		public boolean addBoundHypertTask(final InstanceObject hyperVisor, final InstanceObject hyperTask) {
+			final Set<InstanceObject> taskSet = hyperVisors.get(hyperVisor);
+			if (taskSet != null) {
+				taskSet.add(hyperTask);
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		public boolean checkForExtraBindings(final SystemInstance systemInstance, final Result result) {
+			boolean isOkay = true;
+			for (final ComponentInstance ci : systemInstance.getAllComponentInstances()) {
+				final ComponentCategory cc = ci.getCategory();
+				// Look up what each thread and virtual processor is bound to
+				if (cc == ComponentCategory.THREAD || cc == ComponentCategory.VIRTUAL_PROCESSOR) {
+					final List<InstanceObject> bindings = getProcessorBindings(ci);
+					// if it is bound to a known GuestOS or HyperVisor, then it must be identified as such in a Mixed_Trust_Task
+					isOkay &= checkIfDeclaredBinding(GUEST_OS, guestOSes, ci, bindings, result);
+					isOkay &= checkIfDeclaredBinding(HYPER_VISOR, hyperVisors, ci, bindings, result);
+				}
+			}
+			return isOkay;
+		}
+
+		private static boolean checkIfDeclaredBinding(final String domainName,
+				final Map<InstanceObject, Set<InstanceObject>> domainMap,
+				final InstanceObject threadOrVP, final List<InstanceObject> bindings, final Result result) {
+			boolean isOkay = true;
+			for (final InstanceObject boundTo : bindings) {
+				final Set<InstanceObject> declaredBindings = domainMap.get(boundTo);
+				if (declaredBindings != null && !declaredBindings.contains(threadOrVP)) {
+					MixedTrustAnalysis.error(result, boundTo, ERR_BOUND_BUT_NOT_IDENTIFIED, threadOrVP.getName(),
+							domainName, boundTo.getName());
+					isOkay = false;
+				}
+			}
+			return isOkay;
 		}
 	}
 }

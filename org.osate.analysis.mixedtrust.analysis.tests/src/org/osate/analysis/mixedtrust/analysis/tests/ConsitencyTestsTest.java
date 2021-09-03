@@ -53,6 +53,9 @@ public class ConsitencyTestsTest {
 	private static final String ERR_MIXED_TRUST_TASK_UNBOUND_THREAD = "Mixed_Trust_Task's referenced %s thread %s is not bound";
 	private static final String ERR_MIXED_TRUST_TASK_BOUND_TO_DIFFERENT_PROCESSORS = "Mixed_Trust_Task's GuestTask and HyperTask are bound to different processors";
 	private static final String ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD = "Mixed_Trust_Task must specify a value for field %s";
+	private static final String ERR_MIXED_TRUST_TASK_NO_EXECUTION_TIME = "Mixed_Trust_Task's referenced %s thread %s does not have an association for Compute_Execution_Time";
+
+	private static final String ERR_BOUND_BUT_NOT_IDENTIFIED = "%s is bound to %s %s but is not identified in a Mixed_Trust_Task record";
 
 	private static final String WARNING_MIXED_TRUST_TASK_SPECIFIES_VALUE = "Mixed_Trust_Task's referenced %s thread %s specifies a %s value";
 
@@ -832,6 +835,27 @@ public class ConsitencyTestsTest {
 		assertContainsDiagnostics(diagnostics,
 				error(badRecord, ERR_MIXED_TRUST_TASK_THREAD_NOT_BOUND_TO_RECOGNIZED, GUEST_TASK, T1, GUEST_TASK),
 				error(badRecord, ERR_MIXED_TRUST_TASK_THREAD_NOT_BOUND_TO_RECOGNIZED, HYPER_TASK, T2, HYPER_TASK));
+	}
+
+	@Test
+	public void testMixedTrustTask40() throws Exception {
+		final SystemInstance instance = getSystemInstance(MIXED_TRUST_TASK_FILE, String.format(S_TEST_FORMAT, 40));
+		final AnalysisResult analysisResult = new MixedTrustAnalysis().invoke(null, instance);
+		final Result somResult = analysisResult.getResults().get(0);
+
+		final Element badRecord1 = ((ListValue) findPA(instance.getOwnedPropertyAssociations(), MIXED_TRUST_TASKS)
+				.getOwnedValues()
+				.get(0)
+				.getOwnedValue()).getOwnedListElements().get(0);
+
+		final EList<Diagnostic> diagnostics = somResult.getDiagnostics();
+		assertContainsDiagnostics(diagnostics,
+				error(badRecord1, ERR_MIXED_TRUST_TASK_NO_EXECUTION_TIME, GUEST_TASK, T1),
+				error(badRecord1, ERR_MIXED_TRUST_TASK_NO_EXECUTION_TIME, HYPER_TASK, T2),
+				error(findNamed(instance.getComponentInstances(), GUEST_OS), ERR_BOUND_BUT_NOT_IDENTIFIED, T1, GUEST_OS,
+						GUEST_OS),
+				error(findNamed(instance.getComponentInstances(), HYPER_VISOR), ERR_BOUND_BUT_NOT_IDENTIFIED, T2,
+						HYPER_VISOR, HYPER_VISOR));
 	}
 
 	// ================================================================================
