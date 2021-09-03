@@ -317,6 +317,7 @@ public
 	end S.test32;
 	
 	-- Error: GuestOS task is not bound to a guest os vp
+	-- Error: HyperVisor task is not bound to a guest os vp
 	system implementation S.test33 extends S.i
 		subcomponents
 			OtherVP: virtual processor Other;
