@@ -22,9 +22,19 @@ public
 	
 	process implementation MyProcess.i
 		subcomponents
+			t1: thread T {
+				Compute_Execution_Time => 5ms .. 6ms;
+			};
+			t2: thread T {
+				Compute_Execution_Time => 5ms .. 6ms;
+			};
+	end MyProcess.i;
+	
+	process implementation MyProcess.noExecutionTime
+		subcomponents
 			t1: thread T;
 			t2: thread T;
-	end MyProcess.i;
+	end MyProcess.noExecutionTime;
 	
 --	virtual processor Other
 --	end Other;
@@ -76,7 +86,6 @@ public
 	-- Error: Missing GuestTask
 	system implementation S.test04 extends S.i
 		properties
-			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
 			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
 			
 			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
@@ -87,7 +96,6 @@ public
 	system implementation S.test05 extends S.i
 		properties
 			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
-			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
 			
 			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
 				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1);]);
@@ -328,6 +336,22 @@ public
 			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
 				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcess.t1); HyperTask => reference(theProcess.t2);]);
 	end S.test33;
+		
+	-- Error: Missing execution times
+	-- Error: extra threads bound to the guest os and hypervisor
+	system implementation S.test40 extends S.i
+		subcomponents
+			theProcessBad: process MyProcess.noExecutionTime;
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcess.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcess.t2;
+
+			Actual_Processor_Binding => (reference(GuestOS)) applies to theProcessBad.t1;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to theProcessBad.t2;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks =>
+				([Period => 10 ms; Deadline => 12ms; GuestTask => reference(theProcessBad.t1); HyperTask => reference(theProcessBad.t2);]);
+	end S.test40;
 	
 	---
 	
