@@ -96,6 +96,9 @@ public final class MixedTrustAnalysis {
 	private static final String PERIOD = "Period";
 	private static final String HYPER_VISOR = "HyperVisor";
 	private static final String GUEST_OS = "GuestOS";
+	private static final String GUEST_TASK = "GuestTask";
+	private static final String HYPER_TASK = "HyperTask";
+
 	private static final String EMPTY_STRING = "";
 	private static final String ANALYSIS_RESULT_MESSAGE = "Mixed Trust Scheduling of %s";
 	private static final String ANALYSIS_RESULT_LABEL = "Mixed Trust Scheduling";
@@ -263,9 +266,9 @@ public final class MixedTrustAnalysis {
 		final InstanceObject guestTask = mtt.getGuesttask().orElse(null);
 		final InstanceObject hyperTask = mtt.getHypertask().orElse(null);
 		final InstanceObject guestOsBinding = checkTask(result, where, guestTask, domains::isGuestOS,
-				GUEST_OS);
+				GUEST_TASK);
 		final InstanceObject hyperVisorBinding = checkTask(result, where, hyperTask, domains::isHyperVisor,
-				HYPER_VISOR);
+				HYPER_TASK);
 		if (guestOsBinding != null && hyperVisorBinding != null) {
 			final List<InstanceObject> boundProcs1 = getProcessorBindings(guestOsBinding);
 			final List<InstanceObject> boundProcs2 = getProcessorBindings(hyperVisorBinding);
