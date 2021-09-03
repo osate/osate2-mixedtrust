@@ -87,7 +87,7 @@ public final class MixedTrustAnalysis {
 	private static final String ERR_MIXED_TRUST_TASK_THREAD_NOT_BOUND_TO_RECOGNIZED = "Mixed_Trust_Task's referenced %s thread %s is not bound to a declared %s";
 	private static final String ERR_MIXED_TRUST_TASK_THREAD_BOUND_TO_MORE_THAN_ONE = "Mixed_Trust_Task's referenced %s thread %s bound to more than one component";
 	private static final String ERR_MIXED_TRUST_TASK_UNBOUND_THREAD = "Mixed_Trust_Task's referenced %s thread %s is not bound";
-	private static final String ERR_MIXED_TRUST_TASK_BOUND_TO_DIFFERENT_PROCESSORS = "Mixed_Trust_Task's GuestOS and HyperVisor are bound to different processors";
+	private static final String ERR_MIXED_TRUST_TASK_BOUND_TO_DIFFERENT_PROCESSORS = "Mixed_Trust_Task's GuestTask and HyperTask are bound to different processors";
 	private static final String ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD = "Mixed_Trust_Task must specify a value for field %s";
 
 	private static final String WARNING_MIXED_TRUST_TASK_SPECIFIES_VALUE = "Mixed_Trust_Task's referenced %s thread %s specifies a %s value";
@@ -151,7 +151,9 @@ public final class MixedTrustAnalysis {
 				if (processor.isActive(som)) {
 					MixedTrustProperties.getMixedTrustProcessor(processor).map(mixedTrustBindings -> {
 						final EObject where = MixedTrustProperties.getMixedTrustProcessor_EObject(processor);
-						checkMixedTrustBindings(somResult, where, processor, mixedTrustBindings, domains);
+						if (checkMixedTrustBindings(somResult, where, processor, mixedTrustBindings, domains)) {
+							// TODO: Create Processor model element
+						}
 						return null;
 					});
 				}
@@ -165,7 +167,9 @@ public final class MixedTrustAnalysis {
 								.getOwnedListElements()
 								.iterator();
 						for (final MixedTrustTask mixedTrustTask : listOfTasks) {
-							checkMixedTrustTask(somResult, iter.next(), mixedTrustTask, domains);
+							if (checkMixedTrustTask(somResult, iter.next(), mixedTrustTask, domains)) {
+								// TODO: Create Task model element
+							}
 						}
 						return null;
 					});
@@ -199,16 +203,19 @@ public final class MixedTrustAnalysis {
 	// === Consistency Checking Methods
 	// ======================================================================
 
-	private void checkMixedTrustBindings(final Result result, final EObject where, final ComponentInstance processor,
+	/* Returns true if the property association is good enough for the processor to be added to the analysis model */
+	private boolean checkMixedTrustBindings(final Result result, final EObject where, final ComponentInstance processor,
 			final MixedTrustBindings mixedTrustBindings, final Domains domains) {
+		boolean isBindingOkay = true;
 		final InstanceObject guestOS = mixedTrustBindings.getGuestos().orElse(null);
 		final InstanceObject hyperVisor = mixedTrustBindings.getHypervisor().orElse(null);
 
-		checkVirtualProcessor(result, where, processor, guestOS, GUEST_OS);
-		checkVirtualProcessor(result, where, processor, hyperVisor, HYPER_VISOR);
+		isBindingOkay &= checkVirtualProcessor(result, where, processor, guestOS, GUEST_OS);
+		isBindingOkay &= checkVirtualProcessor(result, where, processor, hyperVisor, HYPER_VISOR);
 
 		if (guestOS != null && guestOS == hyperVisor) {
 			error(result, where, ERR_MIXED_TRUST_BINDINGS_SAME_VALUE, guestOS.getName());
+			isBindingOkay = false;
 		}
 
 		if (guestOS != null && hyperVisor != null) {
@@ -216,29 +223,37 @@ public final class MixedTrustAnalysis {
 			for (final ComponentInstance ci : getBoundVirtualProcessors(processor)) {
 				if (ci != guestOS && ci != hyperVisor) {
 					error(result, processor, ERR_MIXED_TRUST_BINDINGS_EXTRA_BINDING, ci.getName(), processor.getName());
+					isBindingOkay = false;
 				}
 			}
 
 			domains.addGuestOS(guestOS);
 			domains.addHyperVisor(hyperVisor);
 		}
+		return isBindingOkay;
 	}
 
-	private void checkVirtualProcessor(final Result result, final EObject where, final ComponentInstance processor,
+	/* Returns true if the virtual processor reference is acceptable */
+	private boolean checkVirtualProcessor(final Result result, final EObject where, final ComponentInstance processor,
 			final InstanceObject virtualProc, final String fieldName) {
+		boolean isReferenceOkay = true;
 		if (virtualProc == null) {
 			error(result, where, ERR_MIXED_TRUST_BINDINGS_MUST_SPECIFY_FIELD, fieldName);
+			isReferenceOkay = false;
 		} else {
 			final List<InstanceObject> processorBindings = getProcessorBindings(virtualProc);
 			if (!processorBindings.contains(processor)) {
 				// error: not directly bound to processor
 				error(result, where, ERR_MIXED_TRUST_BINDINGS_NOT_BOUND, virtualProc.getName(), fieldName,
 						processor.getName());
+				isReferenceOkay = false;
 			}
 			if (countBoundProcessors(processorBindings) > 1) {
 				error(result, where, ERR_MIXED_TRUST_BINDINGS_BOUND_TO_MORE_THAN_ONE, virtualProc.getName(), fieldName);
+				isReferenceOkay = false;
 			}
 		}
+		return isReferenceOkay;
 	}
 
 	private int countBoundProcessors(final List<InstanceObject> bindings) {
@@ -254,13 +269,17 @@ public final class MixedTrustAnalysis {
 		return count;
 	}
 
-	private void checkMixedTrustTask(final Result result, final EObject where, final MixedTrustTask mtt,
+	/* Return true if the task record is good enough to be added to the analysis model */
+	private boolean checkMixedTrustTask(final Result result, final EObject where, final MixedTrustTask mtt,
 			final Domains domains) {
+		boolean isTaskOkay = true;
 		if (mtt.getPeriod().isEmpty()) {
 			error(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, PERIOD);
+			isTaskOkay = false;
 		}
 		if (mtt.getDeadline().isEmpty()) {
 			error(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, DEADLINE);
+			isTaskOkay = false;
 		}
 
 		final InstanceObject guestTask = mtt.getGuesttask().orElse(null);
@@ -275,8 +294,13 @@ public final class MixedTrustAnalysis {
 
 			if (boundProcs1.size() == 1 && boundProcs2.size() == 1 && boundProcs1.get(0) != boundProcs2.get(0)) {
 				error(result, where, ERR_MIXED_TRUST_TASK_BOUND_TO_DIFFERENT_PROCESSORS);
+				isTaskOkay = false;
 			}
+		} else {
+			isTaskOkay = false;
 		}
+
+		return isTaskOkay;
 	}
 
 	private InstanceObject checkTask(final Result result, final EObject where, final InstanceObject task,
