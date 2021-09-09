@@ -3,6 +3,7 @@ package org.osate.analysis.mixedtrust.analysis;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +17,7 @@ import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 import org.osate.aadl2.ComponentCategory;
 import org.osate.aadl2.ListValue;
+import org.osate.aadl2.contrib.aadlproject.TimeUnits;
 import org.osate.aadl2.contrib.deployment.DeploymentProperties;
 import org.osate.aadl2.contrib.timing.TimingProperties;
 import org.osate.aadl2.instance.ComponentInstance;
@@ -27,12 +29,15 @@ import org.osate.aadl2.util.Aadl2Util;
 import org.osate.analysis.mixedtrust.contribution.mixedtrustproperties.MixedTrustBindings;
 import org.osate.analysis.mixedtrust.contribution.mixedtrustproperties.MixedTrustProperties;
 import org.osate.analysis.mixedtrust.contribution.mixedtrustproperties.MixedTrustTask;
+import org.osate.pluginsupport.properties.PropertyUtils;
 import org.osate.result.AnalysisResult;
 import org.osate.result.DiagnosticType;
 import org.osate.result.Result;
 import org.osate.result.ResultType;
 import org.osate.result.util.ResultUtil;
 import org.osate.xtext.aadl2.properties.util.InstanceModelUtil;
+
+import edu.cmu.sei.mtzsrm.LayeredTrustExactScheduler;
 
 /**
  * Class for performing mixed trust scheduling analysis on a system.
@@ -80,6 +85,7 @@ import org.osate.xtext.aadl2.properties.util.InstanceModelUtil;
  *
  * @since 4.0
  */
+// TODO: Document how the consistency checking works
 public final class MixedTrustAnalysis {
 	private static final String ERR_MIXED_TRUST_BINDINGS_BOUND_TO_MORE_THAN_ONE = "Virtual processor %s referenced by field %s is bound to more than 1 processor";
 	private static final String ERR_MIXED_TRUST_BINDINGS_NOT_BOUND = "Virtual processor %s referenced by field %s is not bound to processor %s";
@@ -159,6 +165,7 @@ public final class MixedTrustAnalysis {
 						final EObject where = MixedTrustProperties.getMixedTrustProcessor_EObject(processor);
 						if (checkMixedTrustBindings(somResult, where, processor, mixedTrustBindings, domains)) {
 							// TODO: Create Processor model element
+							domains.addMixedTrustProcessor(processor);
 						}
 						return null;
 					});
@@ -185,6 +192,26 @@ public final class MixedTrustAnalysis {
 			/* Check that nothing extra is bound to the GuestOS and hypervisors */
 			domains.checkForExtraBindings(systemInstance, somResult);
 
+			/* XXX: Need to make sure that we thinks in a determistic way so that analysis objects can be compared from one run to the next */
+			for (final InstanceObject processor : domains.getMixedTrustProcessors()) {
+				final Result processorResult = ResultUtil.createResult(processor.getName(), processor);
+				somResult.getSubResults().add(processorResult);
+
+				// XXX: Should each processor be scheduled in a separate task?
+				final LayeredTrustExactScheduler scheduler = new LayeredTrustExactScheduler();
+				final List<edu.cmu.sei.mtzsrm.MixedTrustTask> taskList = new LinkedList<>();
+				for (final MixedTrustTask mixedTrustTask : domains.getTasksForProcessor(processor)) {
+					final var schedulerTask = createMixedTrustTask(mixedTrustTask);
+					scheduler.add(schedulerTask);
+					taskList.add(schedulerTask);
+				}
+				final boolean isSchedulable = scheduler.isSchedulable();
+				System.out.println("isSchedulable = " + isSchedulable);
+				for (final var mtt : taskList) {
+					System.out.println("priority = " + mtt.getPriority());
+				}
+			}
+
 			// TODO: Errors (but not warnings) prevent scheduling analysis
 
 			// TODO: Check monitor for being cancelled
@@ -206,6 +233,32 @@ public final class MixedTrustAnalysis {
 		monitor.done();
 
 		return analysisResult;
+	}
+
+	private edu.cmu.sei.mtzsrm.MixedTrustTask createMixedTrustTask(final MixedTrustTask mixedTrustTask) {
+		final int period = mixedTrustTask.getPeriod().map(v -> v.getValue(TimeUnits.US)).orElse(0.0).intValue();
+		final int deadline = mixedTrustTask.getDeadline().map(v -> v.getValue(TimeUnits.US)).orElse(0.0).intValue();
+		final int guestExecTime = mixedTrustTask.getGuesttask()
+				.map(thread -> PropertyUtils
+						.getScaledRange(TimingProperties::getComputeExecutionTime, thread, TimeUnits.US)
+						.map(range -> range.getMaximum())
+						.orElse(0.0))
+				.orElse(0.0)
+				.intValue();
+		final int hyperExecTime = mixedTrustTask.getHypertask()
+				.map(thread -> PropertyUtils
+						.getScaledRange(TimingProperties::getComputeExecutionTime, thread, TimeUnits.US)
+						.map(range -> range.getMaximum())
+						.orElse(0.0))
+				.orElse(0.0)
+				.intValue();
+
+		System.out.println(String.format("MTT[period=%d, deadline=%d, guest time=%d, hyper time=%d]", period, deadline,
+				guestExecTime, hyperExecTime));
+
+		// NB. Guest task criticality must always be 0; hypertask criticality must always be 1
+		return new edu.cmu.sei.mtzsrm.MixedTrustTask(period, deadline, 0, new int[] { guestExecTime }, 1, hyperExecTime,
+				0);
 	}
 
 	// ======================================================================
@@ -294,18 +347,24 @@ public final class MixedTrustAnalysis {
 		final InstanceObject guestTask = mtt.getGuesttask().orElse(null);
 		final InstanceObject hyperTask = mtt.getHypertask().orElse(null);
 		final InstanceObject guestOsBinding = checkTask(result, where, guestTask, domains::isGuestOS,
-				domains::addBoundGuestTask,
-				GUEST_TASK);
+				domains::addBoundGuestTask, GUEST_TASK);
 		final InstanceObject hyperVisorBinding = checkTask(result, where, hyperTask, domains::isHyperVisor,
-				domains::addBoundHypertTask,
-				HYPER_TASK);
+				domains::addBoundHypertTask, HYPER_TASK);
 		if (guestOsBinding != null && hyperVisorBinding != null) {
 			final List<InstanceObject> boundProcs1 = getProcessorBindings(guestOsBinding);
 			final List<InstanceObject> boundProcs2 = getProcessorBindings(hyperVisorBinding);
 
-			if (boundProcs1.size() == 1 && boundProcs2.size() == 1 && boundProcs1.get(0) != boundProcs2.get(0)) {
-				error(result, where, ERR_MIXED_TRUST_TASK_BOUND_TO_DIFFERENT_PROCESSORS);
-				isTaskOkay = false;
+			if (boundProcs1.size() == 1 && boundProcs2.size() == 1) {
+				if (boundProcs1.get(0) != boundProcs2.get(0)) {
+					error(result, where, ERR_MIXED_TRUST_TASK_BOUND_TO_DIFFERENT_PROCESSORS);
+					isTaskOkay = false;
+				} else {
+					/*
+					 * Both are bound to virtual processors that are bound to the same processor, so we add the mixed
+					 * trust task to the set of tasks for that processor.
+					 */
+					domains.addMixedTrustTask(boundProcs1.get(0), mtt);
+				}
 			}
 		} else {
 			isTaskOkay = false;
@@ -471,7 +530,9 @@ public final class MixedTrustAnalysis {
 //		}
 //	}
 
+	// TODO: Document this better
 	private static final class Domains {
+		private final Map<InstanceObject, Set<MixedTrustTask>> mixedTrustProcessors = new HashMap<>();
 		private final Map<InstanceObject, Set<InstanceObject>> guestOSes = new HashMap<>();
 		private final Map<InstanceObject, Set<InstanceObject>> hyperVisors = new HashMap<>();
 
@@ -491,24 +552,37 @@ public final class MixedTrustAnalysis {
 			return hyperVisors.containsKey(task);
 		}
 
-		public boolean addBoundGuestTask(final InstanceObject guestOS, final InstanceObject guestTask) {
-			final Set<InstanceObject> taskSet = guestOSes.get(guestOS);
-			if (taskSet != null) {
-				taskSet.add(guestTask);
+		public void addMixedTrustProcessor(final InstanceObject procesor) {
+			mixedTrustProcessors.put(procesor, new HashSet<>());
+		}
+
+		private static <A, B> boolean addToMappedSet(final Map<A, Set<B>> map, final A key, final B value) {
+			final Set<B> set = map.get(key);
+			if (set != null) {
+				set.add(value);
 				return true;
 			} else {
 				return false;
 			}
 		}
 
+		public boolean addBoundGuestTask(final InstanceObject guestOS, final InstanceObject guestTask) {
+			return addToMappedSet(guestOSes, guestOS, guestTask);
+		}
+
 		public boolean addBoundHypertTask(final InstanceObject hyperVisor, final InstanceObject hyperTask) {
-			final Set<InstanceObject> taskSet = hyperVisors.get(hyperVisor);
-			if (taskSet != null) {
-				taskSet.add(hyperTask);
-				return true;
-			} else {
-				return false;
-			}
+			return addToMappedSet(hyperVisors, hyperVisor, hyperTask);
+		}
+
+		public boolean addMixedTrustTask(final InstanceObject processor, final MixedTrustTask mixedTrustTask) {
+			return addToMappedSet(mixedTrustProcessors, processor, mixedTrustTask);
+		}
+
+		public Set<InstanceObject> getMixedTrustProcessors() {
+			return Collections.unmodifiableSet(mixedTrustProcessors.keySet());
+		}
+		public Iterable<MixedTrustTask> getTasksForProcessor(final InstanceObject processor) {
+			return mixedTrustProcessors.get(processor);
 		}
 
 		public boolean checkForExtraBindings(final SystemInstance systemInstance, final Result result) {
