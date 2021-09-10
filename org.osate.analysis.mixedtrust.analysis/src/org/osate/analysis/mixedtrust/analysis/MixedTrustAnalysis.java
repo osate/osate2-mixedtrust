@@ -206,9 +206,17 @@ public final class MixedTrustAnalysis {
 					taskList.add(schedulerTask);
 				}
 				final boolean isSchedulable = scheduler.isSchedulable();
-				System.out.println("isSchedulable = " + isSchedulable);
+				System.out.println(String.format("%n*** Mixed trust tasks on processor %s%n  isSchedulable = %b",
+						processor.getInstanceObjectPath(), isSchedulable));
+				final var mttDefIter = domains.getTasksForProcessor(processor).iterator();
 				for (final var mtt : taskList) {
-					System.out.println("priority = " + mtt.getPriority());
+					final var mttTaskDef = mttDefIter.next();
+					System.out.println(String.format(
+							"  (%s, %s) Critial Response Time = %d; Response Time = %d; Priority = %d",
+							mttTaskDef.getGuesttask().get().getInstanceObjectPath(), // Record fields have been checked for existence already, shouldn't fail
+							mttTaskDef.getHypertask().get().getInstanceObjectPath(), // Record fields have been checked for existence already, shouldn't fail
+							mtt.getGuestTask().getCriticalResponseTime(), mtt.getHyperTask().getResponseTime(),
+							mtt.getPriority()));
 				}
 			}
 
@@ -218,17 +226,6 @@ public final class MixedTrustAnalysis {
 
 			// TODO: Modes and property look up-- check that referenced components exist
 
-//			/* Run scheduling for each mixed trust processor */
-//			for (final ComponentInstance system : systemInstance.getAllComponentInstances(ComponentCategory.SYSTEM)) {
-//				if (system.isActive(som)) {
-//					MixedTrustProperties.getMixedTrustTasks(system).map(listOfTasks -> {
-//						for (final MixedTrustTask mixedTrustTask : listOfTasks) {
-////							scheduleTasks(mixedTrustTask, domains);
-//						}
-//						return null;
-//					});
-//				}
-//			}
 		}
 		monitor.done();
 
@@ -253,8 +250,8 @@ public final class MixedTrustAnalysis {
 				.orElse(0.0)
 				.intValue();
 
-		System.out.println(String.format("MTT[period=%d, deadline=%d, guest time=%d, hyper time=%d]", period, deadline,
-				guestExecTime, hyperExecTime));
+//		System.out.println(String.format("MTT[period=%d, deadline=%d, guest time=%d, hyper time=%d]", period, deadline,
+//				guestExecTime, hyperExecTime));
 
 		// NB. Guest task criticality must always be 0; hypertask criticality must always be 1
 		return new edu.cmu.sei.mtzsrm.MixedTrustTask(period, deadline, 0, new int[] { guestExecTime }, 1, hyperExecTime,
