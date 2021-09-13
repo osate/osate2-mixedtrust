@@ -20,8 +20,8 @@ import org.osate.pluginsupport.properties.GeneratedRecord;
 public class MixedTrustBindings extends GeneratedRecord {
 	public static final String GUESTOS__NAME = "GuestOS";
 	public static final String HYPERVISOR__NAME = "HyperVisor";
-	public static final URI GUESTOS__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties.aadl#/0/@ownedPropertyType.1/@ownedField.0");
-	public static final URI HYPERVISOR__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties.aadl#/0/@ownedPropertyType.1/@ownedField.1");
+	public static final URI GUESTOS__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.1/@ownedField.0");
+	public static final URI HYPERVISOR__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.1/@ownedField.1");
 	
 	private final Optional<InstanceObject> guestos;
 	private final Optional<InstanceObject> hypervisor;

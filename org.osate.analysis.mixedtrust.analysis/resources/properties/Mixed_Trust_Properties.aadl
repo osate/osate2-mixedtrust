@@ -1,6 +1,9 @@
 -- @codegen-package org.osate.analysis.mixedtrust.contribution.mixedtrustproperties
 property set Mixed_Trust_Properties is
 	Mixed_Trust_Task: type record (
+		-- A task name to improve readability of the results
+		Name: aadlstring;
+		
 		-- Period of the mixed trust task.  Periods of the referenced Guest and Hyper task threads should not be set
 		Period: Time;
 		-- Deadline of the mixed trust task.  Periods of the referenced Guest and Hyper task threads should not be set

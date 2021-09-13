@@ -11,6 +11,7 @@ import org.osate.aadl2.Mode;
 import org.osate.aadl2.NamedElement;
 import org.osate.aadl2.PropertyExpression;
 import org.osate.aadl2.RecordValue;
+import org.osate.aadl2.StringLiteral;
 import org.osate.aadl2.contrib.aadlproject.TimeUnits;
 import org.osate.aadl2.instance.InstanceObject;
 import org.osate.aadl2.instance.InstanceReferenceValue;
@@ -20,26 +21,31 @@ import org.osate.pluginsupport.properties.GeneratedRecord;
 import org.osate.pluginsupport.properties.IntegerWithUnits;
 
 public class MixedTrustTask extends GeneratedRecord {
+	public static final String NAME__NAME = "Name";
 	public static final String PERIOD__NAME = "Period";
 	public static final String DEADLINE__NAME = "Deadline";
 	public static final String GUESTTASK__NAME = "GuestTask";
 	public static final String HYPERTASK__NAME = "HyperTask";
-	public static final URI PERIOD__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties.aadl#/0/@ownedPropertyType.0/@ownedField.0");
-	public static final URI DEADLINE__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties.aadl#/0/@ownedPropertyType.0/@ownedField.1");
-	public static final URI GUESTTASK__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties.aadl#/0/@ownedPropertyType.0/@ownedField.2");
-	public static final URI HYPERTASK__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties.aadl#/0/@ownedPropertyType.0/@ownedField.3");
+	public static final URI NAME__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.0");
+	public static final URI PERIOD__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.1");
+	public static final URI DEADLINE__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.2");
+	public static final URI GUESTTASK__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.3");
+	public static final URI HYPERTASK__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.4");
 	
+	private final Optional<String> name;
 	private final Optional<IntegerWithUnits<TimeUnits>> period;
 	private final Optional<IntegerWithUnits<TimeUnits>> deadline;
 	private final Optional<InstanceObject> guesttask;
 	private final Optional<InstanceObject> hypertask;
 	
 	public MixedTrustTask(
+			Optional<String> name,
 			Optional<IntegerWithUnits<TimeUnits>> period,
 			Optional<IntegerWithUnits<TimeUnits>> deadline,
 			Optional<InstanceObject> guesttask,
 			Optional<InstanceObject> hypertask
 	) {
+		this.name = name;
 		this.period = period;
 		this.deadline = deadline;
 		this.guesttask = guesttask;
@@ -48,6 +54,17 @@ public class MixedTrustTask extends GeneratedRecord {
 	
 	public MixedTrustTask(PropertyExpression propertyExpression, NamedElement lookupContext, Optional<Mode> mode) {
 		RecordValue recordValue = (RecordValue) propertyExpression;
+		
+		Optional<String> name_local;
+		try {
+			name_local = findFieldValue(recordValue, NAME__NAME).map(field -> {
+				PropertyExpression resolved = CodeGenUtil.resolveNamedValue(field.getOwnedValue(), lookupContext, mode);
+				return ((StringLiteral) resolved).getValue();
+			});
+		} catch (PropertyNotPresentException e) {
+			name_local = Optional.empty();
+		}
+		this.name = name_local;
 		
 		Optional<IntegerWithUnits<TimeUnits>> period_local;
 		try {
@@ -94,6 +111,10 @@ public class MixedTrustTask extends GeneratedRecord {
 		this.hypertask = hypertask_local;
 	}
 	
+	public Optional<String> getName() {
+		return name;
+	}
+	
 	public Optional<IntegerWithUnits<TimeUnits>> getPeriod() {
 		return period;
 	}
@@ -112,7 +133,8 @@ public class MixedTrustTask extends GeneratedRecord {
 	
 	@Override
 	public RecordValue toPropertyExpression(ResourceSet resourceSet) {
-		if (!period.isPresent()
+		if (!name.isPresent()
+				&& !period.isPresent()
 				&& !deadline.isPresent()
 				&& !guesttask.isPresent()
 				&& !hypertask.isPresent()
@@ -120,6 +142,11 @@ public class MixedTrustTask extends GeneratedRecord {
 			throw new IllegalStateException("Record must have at least one field set.");
 		}
 		RecordValue recordValue = Aadl2Factory.eINSTANCE.createRecordValue();
+		name.ifPresent(field -> {
+			BasicPropertyAssociation fieldAssociation = recordValue.createOwnedFieldValue();
+			fieldAssociation.setProperty(loadField(resourceSet, NAME__URI, NAME__NAME));
+			fieldAssociation.setOwnedValue(CodeGenUtil.toPropertyExpression(field));
+		});
 		period.ifPresent(field -> {
 			BasicPropertyAssociation fieldAssociation = recordValue.createOwnedFieldValue();
 			fieldAssociation.setProperty(loadField(resourceSet, PERIOD__URI, PERIOD__NAME));
@@ -146,6 +173,7 @@ public class MixedTrustTask extends GeneratedRecord {
 	@Override
 	public int hashCode() {
 		return Objects.hash(
+				name,
 				period,
 				deadline,
 				guesttask,
@@ -162,7 +190,8 @@ public class MixedTrustTask extends GeneratedRecord {
 			return false;
 		}
 		MixedTrustTask other = (MixedTrustTask) obj;
-		return Objects.equals(this.period, other.period)
+		return Objects.equals(this.name, other.name)
+				&& Objects.equals(this.period, other.period)
 				&& Objects.equals(this.deadline, other.deadline)
 				&& Objects.equals(this.guesttask, other.guesttask)
 				&& Objects.equals(this.hypertask, other.hypertask);
@@ -172,6 +201,12 @@ public class MixedTrustTask extends GeneratedRecord {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append('[');
+		this.name.ifPresent(field -> {
+			builder.append(NAME__NAME);
+			builder.append(" => \"");
+			builder.append(field);
+			builder.append("\";");
+		});
 		this.period.ifPresent(field -> {
 			builder.append(PERIOD__NAME);
 			builder.append(" => ");
