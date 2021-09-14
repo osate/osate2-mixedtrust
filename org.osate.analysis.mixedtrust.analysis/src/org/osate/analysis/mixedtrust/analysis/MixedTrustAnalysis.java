@@ -3,6 +3,7 @@ package org.osate.analysis.mixedtrust.analysis;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -72,11 +73,14 @@ import edu.cmu.sei.mtzsrm.LayeredTrustExactScheduler;
  *           <li>diagnostics = empty list
  *           <li>subResults = one {@Result} for each mixed trust task that is bound to the processor via a <code>Mixed_Trust_Properties::Mixed_Trust_Tasks</code>
  *           property association.  Results are in the order that the Mixed_Trust_Task records appear in the list associated with the property.
+ *           The subResult list only exists if the tasks are schedulable.
  *             <ul>
- *               <li>modelElement = {@code null} &mdash; There is no corresponding model element
+ *               <li>modelElement = The Aadl EMF PropertyValue object that corresponds to the task record property value
  *               <li>resultType = SUCCESS
- *               <li>message = "E value for " + (name of the mixed trust task as taken from the name field of the record)
- *               <li>values[0] = The E value for the mixed trust task
+ *               <li>message =  name of the mixed trust task as taken from the name field of the record
+ *               <li>values[0] = The E value for the mixed trust task (IntegerValue) in microseconds
+ *               <li>values[1] = The component path of the mixed trust task's guest task thread (StringValue)
+ *               <li>values[2] = The component path of the mixed trust task's hyper task thread (StringValue)
  *               <li>diagnostics = empty list
  *               <li>subResults = empty list
  *             </ul>
@@ -211,16 +215,27 @@ public final class MixedTrustAnalysis {
 
 				System.out.println(String.format("%n*** Mixed trust tasks on processor %s%n  isSchedulable = %b",
 						processor.getInstanceObjectPath(), isSchedulable));
-				final var mttDefIter = domains.getTasksForProcessor(processor).iterator();
-				for (final var mtt : taskList) {
-					final var mttTaskDef = mttDefIter.next();
-					System.out.println(String.format(
-							"  %s (%s, %s) Critial Response Time = %d; Response Time = %d; Priority = %d",
-							mttTaskDef.getName().orElse("(unamed)"),
-							mttTaskDef.getGuesttask().get().getInstanceObjectPath(), // Record fields have been checked for existence already, shouldn't fail
-							mttTaskDef.getHypertask().get().getInstanceObjectPath(), // Record fields have been checked for existence already, shouldn't fail
-							mtt.getGuestTask().getCriticalResponseTime(), mtt.getHyperTask().getResponseTime(),
-							mtt.getPriority()));
+
+				if (isSchedulable) {
+					final Iterator<MixedTrustTask> mttDefIter = domains.getTasksForProcessor(processor).iterator();
+					for (final edu.cmu.sei.mtzsrm.MixedTrustTask mtt : taskList) {
+						final MixedTrustTask mttTaskDef = mttDefIter.next();
+						final int eValue = mtt.getDeadline() - mtt.getHyperTask().getResponseTime();
+
+						final Result mttResult = ResultUtil.createResult(mttTaskDef.getName().orElse(EMPTY_STRING),
+								domains.getMixedTrustTaskSource(mttTaskDef), ResultType.SUCCESS);
+						processorResult.getSubResults().add(mttResult);
+						ResultUtil.addIntegerValue(mttResult, eValue);
+						// Record fields have been checked for existence already, shouldn't fail
+						ResultUtil.addStringValue(mttResult, mttTaskDef.getGuesttask().get().getInstanceObjectPath());
+						// Record fields have been checked for existence already, shouldn't fail
+						ResultUtil.addStringValue(mttResult, mttTaskDef.getHypertask().get().getInstanceObjectPath());
+						System.out.println(String.format(
+								"  %s (%s, %s) E = %d",
+								mttTaskDef.getName().orElse("(unamed)"),
+								mttTaskDef.getGuesttask().get().getInstanceObjectPath(),
+								mttTaskDef.getHypertask().get().getInstanceObjectPath(), eValue));
+					}
 				}
 			}
 
@@ -330,6 +345,8 @@ public final class MixedTrustAnalysis {
 
 	/**
 	 * Check the consistency of a Multi_Trust_Task record.
+	 * @param where The EObject of the actual property value in the AADL EMF model
+	 * @param MixedTrustTask the corresponding record object that is derived from that property value
 	 * @return {@code true} iff the task record is good enough to be added to the analysis model.
 	 */
 	private boolean checkMixedTrustTask(final Result result, final EObject where, final MixedTrustTask mtt,
@@ -368,7 +385,7 @@ public final class MixedTrustAnalysis {
 					 * Both are bound to virtual processors that are bound to the same processor, so we add the mixed
 					 * trust task to the set of tasks for that processor.
 					 */
-					domains.addMixedTrustTask((ComponentInstance) boundProcs1.get(0), mtt);
+					domains.addMixedTrustTask((ComponentInstance) boundProcs1.get(0), mtt, where);
 				}
 			}
 		} else {
@@ -544,6 +561,12 @@ public final class MixedTrustAnalysis {
 		 */
 		private final Map<ComponentInstance, List<ComponentInstance>> hyperVisors = new HashMap<>();
 
+		/**
+		 * Map from MixedTrustTask records to the actual AADL EMF property value object that the record
+		 * is derived from.  This is used for error and result reporting.
+		 */
+		private final Map<MixedTrustTask, EObject> taskRecords = new HashMap<>();
+
 		public void addGuestOS(final ComponentInstance guestOS) {
 			guestOSes.put(guestOS, new ArrayList<>());
 		}
@@ -582,15 +605,22 @@ public final class MixedTrustAnalysis {
 			return addToMappedList(hyperVisors, hyperVisor, hyperTask);
 		}
 
-		public boolean addMixedTrustTask(final ComponentInstance processor, final MixedTrustTask mixedTrustTask) {
+		public boolean addMixedTrustTask(final ComponentInstance processor, final MixedTrustTask mixedTrustTask,
+				final EObject where) {
+			taskRecords.put(mixedTrustTask, where);
 			return addToMappedList(mixedTrustProcessors, processor, mixedTrustTask);
 		}
 
 		public Set<InstanceObject> getMixedTrustProcessors() {
 			return Collections.unmodifiableSet(mixedTrustProcessors.keySet());
 		}
+
 		public Iterable<MixedTrustTask> getTasksForProcessor(final InstanceObject processor) {
 			return mixedTrustProcessors.get(processor);
+		}
+
+		public EObject getMixedTrustTaskSource(final MixedTrustTask mtt) {
+			return taskRecords.get(mtt);
 		}
 
 		/**

@@ -1,0 +1,178 @@
+package ScheduleMixedTrustTasks
+public
+	with Mixed_Trust_Properties;
+	
+	system top
+	end top;
+	
+	system implementation top.x
+		subcomponents
+			s1: system MixedTrustSystem.TestBasicTwoTasks;
+			s2: system MixedTrustSystem.TestThreeTasks;
+			s3: system MixedTrustSystem.TestThreeTasksNotSchedulable;
+	end top.x;
+	
+	-- ================================================================================
+
+	process MixedTrustTask
+	end MixedTrustTask;
+	
+	process implementation MixedTrustTask.basicMTT
+		subcomponents
+			GuestThread: thread;
+			HyperThread: thread;
+	end MixedTrustTask.basicMTT;
+	
+	-- ================================================================================
+	
+	system MixedTrustSystem
+	end MixedTrustSystem;
+	
+	system implementation MixedTrustSystem.basicMTS
+		subcomponents
+			P: processor;
+			
+			GuestOS: virtual processor;
+			HyperVisor: virtual processor;
+		properties
+			Actual_Processor_Binding => (reference(P)) applies to GuestOS, HyperVisor;			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOS => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to P;
+	end MixedTrustSystem.basicMTS;
+	
+	-- ================================================================================
+	
+	system implementation MixedTrustSystem.TestBasicTwoTasks extends MixedTrustSystem.basicMTS
+		subcomponents
+			MixedTrust1: process MixedTrustTask.k1;
+			MixedTrust2: process MixedTrustTask.k2;
+			
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to MixedTrust1.GuestThread, MixedTrust2.GuestThread;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to MixedTrust1.HyperThread, MixedTrust2.HyperThread;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks => (
+				[Name => "MT 1"; Period => 8 ms; Deadline => 8 ms; GuestTask => reference(MixedTrust1.GuestThread); HyperTask => reference(MixedTrust1.HyperThread);],
+				[Name => "MT 2"; Period => 14 ms; Deadline => 14 ms; GuestTask => reference(MixedTrust2.GuestThread); HyperTask => reference(MixedTrust2.HyperThread);]
+			);	
+	end MixedTrustSystem.TestBasicTwoTasks;
+
+	process implementation MixedTrustTask.k1
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 4ms .. 4ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 0ms .. 0ms;
+			};
+	end MixedTrustTask.k1;
+	
+	process implementation MixedTrustTask.k2
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 2ms .. 2ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 3ms .. 3ms;
+			};
+	end MixedTrustTask.k2;
+	
+	
+	-- ================================================================================
+	
+	system implementation MixedTrustSystem.TestThreeTasks extends MixedTrustSystem.basicMTS
+		subcomponents
+			MixedTrust1: process MixedTrustTask.i1;
+			MixedTrust2: process MixedTrustTask.i2;
+			MixedTrust3: process MixedTrustTask.i3;
+			
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to MixedTrust1.GuestThread, MixedTrust2.GuestThread, MixedTrust3.GuestThread;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to MixedTrust1.HyperThread, MixedTrust2.HyperThread, MixedTrust3.HyperThread;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks => (
+				[Name => "MT 1"; Period => 8 ms; Deadline => 8 ms; GuestTask => reference(MixedTrust1.GuestThread); HyperTask => reference(MixedTrust1.HyperThread);],
+				[Name => "MT 2"; Period => 14 ms; Deadline => 14 ms; GuestTask => reference(MixedTrust2.GuestThread); HyperTask => reference(MixedTrust2.HyperThread);],
+				[Name => "MT 3"; Period => 20 ms; Deadline => 20 ms; GuestTask => reference(MixedTrust3.GuestThread); HyperTask => reference(MixedTrust3.HyperThread);]
+			);	
+	end MixedTrustSystem.TestThreeTasks;
+
+	process implementation MixedTrustTask.i1
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 2ms .. 2ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 0ms .. 0ms;
+			};
+	end MixedTrustTask.i1;
+	
+	process implementation MixedTrustTask.i2
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 2ms .. 2ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 2ms .. 2ms;
+			};
+	end MixedTrustTask.i2;
+	
+	process implementation MixedTrustTask.i3
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 4ms .. 4ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 1ms .. 1ms;
+			};
+	end MixedTrustTask.i3;
+	
+	-- ================================================================================
+
+	system implementation MixedTrustSystem.TestThreeTasksNotSchedulable extends MixedTrustSystem.basicMTS
+		subcomponents
+			MixedTrust1: process MixedTrustTask.j1;
+			MixedTrust2: process MixedTrustTask.j2;
+			MixedTrust3: process MixedTrustTask.j3;
+			
+		properties
+			Actual_Processor_Binding => (reference(GuestOS)) applies to MixedTrust1.GuestThread, MixedTrust2.GuestThread, MixedTrust3.GuestThread;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to MixedTrust1.HyperThread, MixedTrust2.HyperThread, MixedTrust3.HyperThread;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks => (
+				[Name => "MT 1"; Period => 8 ms; Deadline => 8 ms; GuestTask => reference(MixedTrust1.GuestThread); HyperTask => reference(MixedTrust1.HyperThread);],
+				[Name => "MT 2"; Period => 14 ms; Deadline => 14 ms; GuestTask => reference(MixedTrust2.GuestThread); HyperTask => reference(MixedTrust2.HyperThread);],
+				[Name => "MT 3"; Period => 20 ms; Deadline => 20 ms; GuestTask => reference(MixedTrust3.GuestThread); HyperTask => reference(MixedTrust3.HyperThread);]
+			);	
+	end MixedTrustSystem.TestThreeTasksNotSchedulable;
+	
+	process implementation MixedTrustTask.j1
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 4ms .. 4ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 0ms .. 0ms;
+			};
+	end MixedTrustTask.j1;
+	
+	process implementation MixedTrustTask.j2
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 2ms .. 2ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 2ms .. 2ms;
+			};
+	end MixedTrustTask.j2;
+	
+	process implementation MixedTrustTask.j3
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 4ms .. 4ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 1ms .. 1ms;
+			};
+	end MixedTrustTask.j3;
+end ScheduleMixedTrustTasks
+;
