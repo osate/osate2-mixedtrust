@@ -1,8 +1,8 @@
 package org.osate.analysis.mixedtrust.analysis;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -70,12 +70,13 @@ import edu.cmu.sei.mtzsrm.LayeredTrustExactScheduler;
  *           <li>message = The component's name from {@link ComponentInstance#getName()}
  *           <li>values[0] = TRUE or FALSE indicating whether the processor's tasks are schedulable (BooleanValue)
  *           <li>diagnostics = empty list
- *           <li>subResults = one {@Result} for each thread bound to a hyper visor or guest os running on this processor
+ *           <li>subResults = one {@Result} for each mixed trust task that is bound to the processor via a <code>Mixed_Trust_Properties::Mixed_Trust_Tasks</code>
+ *           property association.  Results are in the order that the Mixed_Trust_Task records appear in the list associated with the property.
  *             <ul>
- *               <li>modelElement = {@code ComponentInstance} instance object for the thread
+ *               <li>modelElement = {@code null} &mdash; There is no corresponding model element
  *               <li>resultType = SUCCESS
- *               <li>message = The component's name from {@link ComponentInstance#getName()}
- *               <li>values[0] = The priority value for the task (IntegerValue)
+ *               <li>message = "E value for " + (name of the mixed trust task as taken from the name field of the record)
+ *               <li>values[0] = The E value for the mixed trust task
  *               <li>diagnostics = empty list
  *               <li>subResults = empty list
  *             </ul>
@@ -164,7 +165,6 @@ public final class MixedTrustAnalysis {
 					MixedTrustProperties.getMixedTrustProcessor(processor).map(mixedTrustBindings -> {
 						final EObject where = MixedTrustProperties.getMixedTrustProcessor_EObject(processor);
 						if (checkMixedTrustBindings(somResult, where, processor, mixedTrustBindings, domains)) {
-							// TODO: Create Processor model element
 							domains.addMixedTrustProcessor(processor);
 						}
 						return null;
@@ -180,9 +180,7 @@ public final class MixedTrustAnalysis {
 								.getOwnedListElements()
 								.iterator();
 						for (final MixedTrustTask mixedTrustTask : listOfTasks) {
-							if (checkMixedTrustTask(somResult, iter.next(), mixedTrustTask, domains)) {
-								// TODO: Create Task model element
-							}
+							checkMixedTrustTask(somResult, iter.next(), mixedTrustTask, domains);
 						}
 						return null;
 					});
@@ -192,12 +190,15 @@ public final class MixedTrustAnalysis {
 			/* Check that nothing extra is bound to the GuestOS and hypervisors */
 			domains.checkForExtraBindings(systemInstance, somResult);
 
-			/* XXX: Need to make sure that we thinks in a determistic way so that analysis objects can be compared from one run to the next */
+			/*
+			 * Now we can actually run the scheduling. We create a scheduler object for each processor
+			 * identified with a consistent Mixed_Trust_Bindings property association.
+			 */
 			for (final InstanceObject processor : domains.getMixedTrustProcessors()) {
-				final Result processorResult = ResultUtil.createResult(processor.getName(), processor);
+				final Result processorResult = ResultUtil.createResult(processor.getName(), processor,
+						ResultType.SUCCESS);
 				somResult.getSubResults().add(processorResult);
 
-				// XXX: Should each processor be scheduled in a separate task?
 				final LayeredTrustExactScheduler scheduler = new LayeredTrustExactScheduler();
 				final List<edu.cmu.sei.mtzsrm.MixedTrustTask> taskList = new LinkedList<>();
 				for (final MixedTrustTask mixedTrustTask : domains.getTasksForProcessor(processor)) {
@@ -206,21 +207,22 @@ public final class MixedTrustAnalysis {
 					taskList.add(schedulerTask);
 				}
 				final boolean isSchedulable = scheduler.isSchedulable();
+				ResultUtil.addBooleanValue(processorResult, isSchedulable);
+
 				System.out.println(String.format("%n*** Mixed trust tasks on processor %s%n  isSchedulable = %b",
 						processor.getInstanceObjectPath(), isSchedulable));
 				final var mttDefIter = domains.getTasksForProcessor(processor).iterator();
 				for (final var mtt : taskList) {
 					final var mttTaskDef = mttDefIter.next();
 					System.out.println(String.format(
-							"  (%s, %s) Critial Response Time = %d; Response Time = %d; Priority = %d",
+							"  %s (%s, %s) Critial Response Time = %d; Response Time = %d; Priority = %d",
+							mttTaskDef.getName().orElse("(unamed)"),
 							mttTaskDef.getGuesttask().get().getInstanceObjectPath(), // Record fields have been checked for existence already, shouldn't fail
 							mttTaskDef.getHypertask().get().getInstanceObjectPath(), // Record fields have been checked for existence already, shouldn't fail
 							mtt.getGuestTask().getCriticalResponseTime(), mtt.getHyperTask().getResponseTime(),
 							mtt.getPriority()));
 				}
 			}
-
-			// TODO: Errors (but not warnings) prevent scheduling analysis
 
 			// TODO: Check monitor for being cancelled
 
@@ -233,6 +235,7 @@ public final class MixedTrustAnalysis {
 	}
 
 	private edu.cmu.sei.mtzsrm.MixedTrustTask createMixedTrustTask(final MixedTrustTask mixedTrustTask) {
+		// get the period, deadline, and execution times in microseconds
 		final int period = mixedTrustTask.getPeriod().map(v -> v.getValue(TimeUnits.US)).orElse(0.0).intValue();
 		final int deadline = mixedTrustTask.getDeadline().map(v -> v.getValue(TimeUnits.US)).orElse(0.0).intValue();
 		final int guestExecTime = mixedTrustTask.getGuesttask()
@@ -250,9 +253,6 @@ public final class MixedTrustAnalysis {
 				.orElse(0.0)
 				.intValue();
 
-//		System.out.println(String.format("MTT[period=%d, deadline=%d, guest time=%d, hyper time=%d]", period, deadline,
-//				guestExecTime, hyperExecTime));
-
 		// NB. Guest task criticality must always be 0; hypertask criticality must always be 1
 		return new edu.cmu.sei.mtzsrm.MixedTrustTask(period, deadline, 0, new int[] { guestExecTime }, 1, hyperExecTime,
 				0);
@@ -266,8 +266,8 @@ public final class MixedTrustAnalysis {
 	private boolean checkMixedTrustBindings(final Result result, final EObject where, final ComponentInstance processor,
 			final MixedTrustBindings mixedTrustBindings, final Domains domains) {
 		boolean isBindingOkay = true;
-		final InstanceObject guestOS = mixedTrustBindings.getGuestos().orElse(null);
-		final InstanceObject hyperVisor = mixedTrustBindings.getHypervisor().orElse(null);
+		final ComponentInstance guestOS = (ComponentInstance) mixedTrustBindings.getGuestos().orElse(null);
+		final ComponentInstance hyperVisor = (ComponentInstance) mixedTrustBindings.getHypervisor().orElse(null);
 
 		isBindingOkay &= checkVirtualProcessor(result, where, processor, guestOS, GUEST_OS);
 		isBindingOkay &= checkVirtualProcessor(result, where, processor, hyperVisor, HYPER_VISOR);
@@ -328,7 +328,10 @@ public final class MixedTrustAnalysis {
 		return count;
 	}
 
-	/* Return true if the task record is good enough to be added to the analysis model */
+	/**
+	 * Check the consistency of a Multi_Trust_Task record.
+	 * @return {@code true} iff the task record is good enough to be added to the analysis model.
+	 */
 	private boolean checkMixedTrustTask(final Result result, final EObject where, final MixedTrustTask mtt,
 			final Domains domains) {
 		boolean isTaskOkay = true;
@@ -341,13 +344,18 @@ public final class MixedTrustAnalysis {
 			isTaskOkay = false;
 		}
 
-		final InstanceObject guestTask = mtt.getGuesttask().orElse(null);
-		final InstanceObject hyperTask = mtt.getHypertask().orElse(null);
+		final ComponentInstance guestTask = (ComponentInstance) mtt.getGuesttask().orElse(null);
+		final ComponentInstance hyperTask = (ComponentInstance) mtt.getHypertask().orElse(null);
 		final InstanceObject guestOsBinding = checkTask(result, where, guestTask, domains::isGuestOS,
 				domains::addBoundGuestTask, GUEST_TASK);
 		final InstanceObject hyperVisorBinding = checkTask(result, where, hyperTask, domains::isHyperVisor,
 				domains::addBoundHypertTask, HYPER_TASK);
 		if (guestOsBinding != null && hyperVisorBinding != null) {
+			/*
+			 * If the multi trust task has guest os task and a hyper task, and those tasks are bound to a known
+			 * guest os and hyper visor, then check that the guest os and hyper visor are both bound to the
+			 * same processor. No fair splitting the multi trust task across two different processors.
+			 */
 			final List<InstanceObject> boundProcs1 = getProcessorBindings(guestOsBinding);
 			final List<InstanceObject> boundProcs2 = getProcessorBindings(hyperVisorBinding);
 
@@ -360,7 +368,7 @@ public final class MixedTrustAnalysis {
 					 * Both are bound to virtual processors that are bound to the same processor, so we add the mixed
 					 * trust task to the set of tasks for that processor.
 					 */
-					domains.addMixedTrustTask(boundProcs1.get(0), mtt);
+					domains.addMixedTrustTask((ComponentInstance) boundProcs1.get(0), mtt);
 				}
 			}
 		} else {
@@ -370,9 +378,13 @@ public final class MixedTrustAnalysis {
 		return isTaskOkay;
 	}
 
-	private InstanceObject checkTask(final Result result, final EObject where, final InstanceObject task,
-			final Function<InstanceObject, Boolean> checkTaskMembership,
-			final BiFunction<InstanceObject, InstanceObject, Boolean> addBoundTask, final String fieldName) {
+	/**
+	 * Check the consistency of the Thread ComponentInstance identified by {@code task}.
+	 * @return {@code true} The virtual processor the thread is bound iff the thread is consistent; {@code null} otherwise.
+	 */
+	private InstanceObject checkTask(final Result result, final EObject where, final ComponentInstance task,
+			final Function<ComponentInstance, Boolean> checkTaskMembership,
+			final BiFunction<ComponentInstance, ComponentInstance, Boolean> addBoundTask, final String fieldName) {
 		if (task == null) {
 			error(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, fieldName);
 			return null;
@@ -398,11 +410,11 @@ public final class MixedTrustAnalysis {
 				error(result, where, ERR_MIXED_TRUST_TASK_THREAD_BOUND_TO_MORE_THAN_ONE, fieldName, task.getName());
 
 				for (final InstanceObject p : boundProcs) {
-					addBoundTask.apply(p, task);
+					addBoundTask.apply((ComponentInstance) p, task);
 				}
 				return null;
 			} else {
-				final InstanceObject boundTo = boundProcs.get(0);
+				final ComponentInstance boundTo = (ComponentInstance) boundProcs.get(0);
 				if (!checkTaskMembership.apply(boundTo)) {
 					error(result, where, ERR_MIXED_TRUST_TASK_THREAD_NOT_BOUND_TO_RECOGNIZED, fieldName, task.getName(),
 							fieldName);
@@ -506,39 +518,38 @@ public final class MixedTrustAnalysis {
 
 	// ======================================================================
 
-//	private static final class Domains {
-//		private final Set<InstanceObject> guestOSes = new HashSet<>();
-//		private final Set<InstanceObject> hyperVisors = new HashSet<>();
-//
-//		public void addGuestOS(final InstanceObject guestOS) {
-//			guestOSes.add(guestOS);
-//		}
-//
-//		public void addHyperVisor(final InstanceObject hyperVisor) {
-//			hyperVisors.add(hyperVisor);
-//		}
-//
-//		public boolean isGuestOS(final InstanceObject task) {
-//			return guestOSes.contains(task);
-//		}
-//
-//		public boolean isHyperVisor(final InstanceObject task) {
-//			return hyperVisors.contains(task);
-//		}
-//	}
-
-	// TODO: Document this better
 	private static final class Domains {
-		private final Map<InstanceObject, Set<MixedTrustTask>> mixedTrustProcessors = new HashMap<>();
-		private final Map<InstanceObject, Set<InstanceObject>> guestOSes = new HashMap<>();
-		private final Map<InstanceObject, Set<InstanceObject>> hyperVisors = new HashMap<>();
+		/* Use lists to guarantee a consistent order in the output of results. */
 
-		public void addGuestOS(final InstanceObject guestOS) {
-			guestOSes.put(guestOS, new HashSet<>());
+		/**
+		 * Map from Processor ComponentInstances to Lists of the mixed trust tasks associated with the processor.
+		 * Only processors that pass consistency checking are added as keys, and only tasks that pass consistency
+		 * checking are added to the list.
+		 */
+		private final Map<ComponentInstance, List<MixedTrustTask>> mixedTrustProcessors = new HashMap<>();
+
+		/**
+		 * Map from Virtual Processor ComponentInstances representing guest operating systems to List of
+		 * ComponentInstances of Threads bound to that guest os.  Only guest os virtual processors that pass
+		 * consistency checking are added as keys, and only guest task threads that pass consistency checking are
+		 * added to the list.
+		 */
+		private final Map<ComponentInstance, List<ComponentInstance>> guestOSes = new HashMap<>();
+
+		/**
+		 * Map from Virtual Processor ComponentInstances representing hyper visors to List of
+		 * ComponentInstances of Threads bound to that hyper visor.  Only hyper visor virtual processors that pass
+		 * consistency checking are added as keys, and only hyper task threads that pass consistency checking are
+		 * added to the list.
+		 */
+		private final Map<ComponentInstance, List<ComponentInstance>> hyperVisors = new HashMap<>();
+
+		public void addGuestOS(final ComponentInstance guestOS) {
+			guestOSes.put(guestOS, new ArrayList<>());
 		}
 
-		public void addHyperVisor(final InstanceObject hyperVisor) {
-			hyperVisors.put(hyperVisor, new HashSet<>());
+		public void addHyperVisor(final ComponentInstance hyperVisor) {
+			hyperVisors.put(hyperVisor, new ArrayList<>());
 		}
 
 		public boolean isGuestOS(final InstanceObject task) {
@@ -549,12 +560,12 @@ public final class MixedTrustAnalysis {
 			return hyperVisors.containsKey(task);
 		}
 
-		public void addMixedTrustProcessor(final InstanceObject procesor) {
-			mixedTrustProcessors.put(procesor, new HashSet<>());
+		public void addMixedTrustProcessor(final ComponentInstance procesor) {
+			mixedTrustProcessors.put(procesor, new ArrayList<>());
 		}
 
-		private static <A, B> boolean addToMappedSet(final Map<A, Set<B>> map, final A key, final B value) {
-			final Set<B> set = map.get(key);
+		private static <A, B> boolean addToMappedList(final Map<A, List<B>> map, final A key, final B value) {
+			final List<B> set = map.get(key);
 			if (set != null) {
 				set.add(value);
 				return true;
@@ -563,16 +574,16 @@ public final class MixedTrustAnalysis {
 			}
 		}
 
-		public boolean addBoundGuestTask(final InstanceObject guestOS, final InstanceObject guestTask) {
-			return addToMappedSet(guestOSes, guestOS, guestTask);
+		public boolean addBoundGuestTask(final ComponentInstance guestOS, final ComponentInstance guestTask) {
+			return addToMappedList(guestOSes, guestOS, guestTask);
 		}
 
-		public boolean addBoundHypertTask(final InstanceObject hyperVisor, final InstanceObject hyperTask) {
-			return addToMappedSet(hyperVisors, hyperVisor, hyperTask);
+		public boolean addBoundHypertTask(final ComponentInstance hyperVisor, final ComponentInstance hyperTask) {
+			return addToMappedList(hyperVisors, hyperVisor, hyperTask);
 		}
 
-		public boolean addMixedTrustTask(final InstanceObject processor, final MixedTrustTask mixedTrustTask) {
-			return addToMappedSet(mixedTrustProcessors, processor, mixedTrustTask);
+		public boolean addMixedTrustTask(final ComponentInstance processor, final MixedTrustTask mixedTrustTask) {
+			return addToMappedList(mixedTrustProcessors, processor, mixedTrustTask);
 		}
 
 		public Set<InstanceObject> getMixedTrustProcessors() {
@@ -582,6 +593,17 @@ public final class MixedTrustAnalysis {
 			return mixedTrustProcessors.get(processor);
 		}
 
+		/**
+		 * For each thread and virtual processor X in the given system, check that if that if X is bound
+		 * to a known Guest operating system or hypervisor, then X much be identified as such via a
+		 * Mixed_Trust_Task record.  In other words, only the virtual processors identified in
+		 * Mixed_Trust_Task records are bound to processors with Mixed_Trust_Task records.  Nothing
+		 * extra is allowed.
+		 *
+		 * @param systemInstance
+		 * @param result
+		 * @return {@code true} iff there are no extra bindings
+		 */
 		public boolean checkForExtraBindings(final SystemInstance systemInstance, final Result result) {
 			boolean isOkay = true;
 			for (final ComponentInstance ci : systemInstance.getAllComponentInstances()) {
@@ -598,11 +620,11 @@ public final class MixedTrustAnalysis {
 		}
 
 		private static boolean checkIfDeclaredBinding(final String domainName,
-				final Map<InstanceObject, Set<InstanceObject>> domainMap,
+				final Map<ComponentInstance, List<ComponentInstance>> domainMap,
 				final InstanceObject threadOrVP, final List<InstanceObject> bindings, final Result result) {
 			boolean isOkay = true;
 			for (final InstanceObject boundTo : bindings) {
-				final Set<InstanceObject> declaredBindings = domainMap.get(boundTo);
+				final List<ComponentInstance> declaredBindings = domainMap.get(boundTo);
 				if (declaredBindings != null && !declaredBindings.contains(threadOrVP)) {
 					MixedTrustAnalysis.error(result, boundTo, ERR_BOUND_BUT_NOT_IDENTIFIED, threadOrVP.getName(),
 							domainName, boundTo.getName());
