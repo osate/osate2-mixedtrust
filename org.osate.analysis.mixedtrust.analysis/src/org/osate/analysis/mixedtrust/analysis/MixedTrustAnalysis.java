@@ -7,7 +7,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -68,7 +67,7 @@ import edu.cmu.sei.mtzsrm.LayeredTrustExactScheduler;
  *         <ul>
  *           <li>modelElement = {@code ComponentInstance} instance object
  *           <li>resultType = SUCCESS
- *           <li>message = The component's name from {@link ComponentInstance#getName()}
+ *           <li>message = The component path of the processor
  *           <li>values[0] = TRUE or FALSE indicating whether the processor's tasks are schedulable (BooleanValue)
  *           <li>diagnostics = empty list
  *           <li>subResults = one {@Result} for each mixed trust task that is bound to the processor via a <code>Mixed_Trust_Properties::Mixed_Trust_Tasks</code>
@@ -199,7 +198,7 @@ public final class MixedTrustAnalysis {
 			 * identified with a consistent Mixed_Trust_Bindings property association.
 			 */
 			for (final InstanceObject processor : domains.getMixedTrustProcessors()) {
-				final Result processorResult = ResultUtil.createResult(processor.getName(), processor,
+				final Result processorResult = ResultUtil.createResult(processor.getInstanceObjectPath(), processor,
 						ResultType.SUCCESS);
 				somResult.getSubResults().add(processorResult);
 
@@ -567,6 +566,14 @@ public final class MixedTrustAnalysis {
 		 */
 		private final Map<MixedTrustTask, EObject> taskRecords = new HashMap<>();
 
+		/**
+		 * List of all the processors with consistent mixed trust bindings.  THese are the
+		 * same objects that are in the keyset of {@link #mixedTrustProcessors}.  This list is
+		 * maintained separately so that we can visit the processors in the order in which they
+		 * appear in the source text and produce an output with a consistent order.
+		 */
+		private final List<ComponentInstance> processorList = new ArrayList<>();
+
 		public void addGuestOS(final ComponentInstance guestOS) {
 			guestOSes.put(guestOS, new ArrayList<>());
 		}
@@ -583,8 +590,9 @@ public final class MixedTrustAnalysis {
 			return hyperVisors.containsKey(task);
 		}
 
-		public void addMixedTrustProcessor(final ComponentInstance procesor) {
-			mixedTrustProcessors.put(procesor, new ArrayList<>());
+		public void addMixedTrustProcessor(final ComponentInstance processor) {
+			processorList.add(processor);
+			mixedTrustProcessors.put(processor, new ArrayList<>());
 		}
 
 		private static <A, B> boolean addToMappedList(final Map<A, List<B>> map, final A key, final B value) {
@@ -611,8 +619,8 @@ public final class MixedTrustAnalysis {
 			return addToMappedList(mixedTrustProcessors, processor, mixedTrustTask);
 		}
 
-		public Set<InstanceObject> getMixedTrustProcessors() {
-			return Collections.unmodifiableSet(mixedTrustProcessors.keySet());
+		public List<ComponentInstance> getMixedTrustProcessors() {
+			return Collections.unmodifiableList(processorList);
 		}
 
 		public Iterable<MixedTrustTask> getTasksForProcessor(final InstanceObject processor) {
