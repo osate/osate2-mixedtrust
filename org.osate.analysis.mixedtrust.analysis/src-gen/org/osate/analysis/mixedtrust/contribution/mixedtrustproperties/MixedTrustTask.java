@@ -26,30 +26,35 @@ public class MixedTrustTask extends GeneratedRecord {
 	public static final String DEADLINE__NAME = "Deadline";
 	public static final String GUESTTASK__NAME = "GuestTask";
 	public static final String HYPERTASK__NAME = "HyperTask";
+	public static final String E__NAME = "E";
 	public static final URI NAME__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.0");
 	public static final URI PERIOD__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.1");
 	public static final URI DEADLINE__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.2");
 	public static final URI GUESTTASK__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.3");
 	public static final URI HYPERTASK__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.4");
+	public static final URI E__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.5");
 	
 	private final Optional<String> name;
 	private final Optional<IntegerWithUnits<TimeUnits>> period;
 	private final Optional<IntegerWithUnits<TimeUnits>> deadline;
 	private final Optional<InstanceObject> guesttask;
 	private final Optional<InstanceObject> hypertask;
+	private final Optional<IntegerWithUnits<TimeUnits>> e;
 	
 	public MixedTrustTask(
 			Optional<String> name,
 			Optional<IntegerWithUnits<TimeUnits>> period,
 			Optional<IntegerWithUnits<TimeUnits>> deadline,
 			Optional<InstanceObject> guesttask,
-			Optional<InstanceObject> hypertask
+			Optional<InstanceObject> hypertask,
+			Optional<IntegerWithUnits<TimeUnits>> e
 	) {
 		this.name = name;
 		this.period = period;
 		this.deadline = deadline;
 		this.guesttask = guesttask;
 		this.hypertask = hypertask;
+		this.e = e;
 	}
 	
 	public MixedTrustTask(PropertyExpression propertyExpression, NamedElement lookupContext, Optional<Mode> mode) {
@@ -109,6 +114,17 @@ public class MixedTrustTask extends GeneratedRecord {
 			hypertask_local = Optional.empty();
 		}
 		this.hypertask = hypertask_local;
+		
+		Optional<IntegerWithUnits<TimeUnits>> e_local;
+		try {
+			e_local = findFieldValue(recordValue, E__NAME).map(field -> {
+				PropertyExpression resolved = CodeGenUtil.resolveNamedValue(field.getOwnedValue(), lookupContext, mode);
+				return new IntegerWithUnits<>(resolved, TimeUnits.class);
+			});
+		} catch (PropertyNotPresentException e) {
+			e_local = Optional.empty();
+		}
+		this.e = e_local;
 	}
 	
 	public Optional<String> getName() {
@@ -131,6 +147,10 @@ public class MixedTrustTask extends GeneratedRecord {
 		return hypertask;
 	}
 	
+	public Optional<IntegerWithUnits<TimeUnits>> getE() {
+		return e;
+	}
+	
 	@Override
 	public RecordValue toPropertyExpression(ResourceSet resourceSet) {
 		if (!name.isPresent()
@@ -138,6 +158,7 @@ public class MixedTrustTask extends GeneratedRecord {
 				&& !deadline.isPresent()
 				&& !guesttask.isPresent()
 				&& !hypertask.isPresent()
+				&& !e.isPresent()
 		) {
 			throw new IllegalStateException("Record must have at least one field set.");
 		}
@@ -167,6 +188,11 @@ public class MixedTrustTask extends GeneratedRecord {
 			fieldAssociation.setProperty(loadField(resourceSet, HYPERTASK__URI, HYPERTASK__NAME));
 			fieldAssociation.setOwnedValue(CodeGenUtil.toPropertyExpression(field));
 		});
+		e.ifPresent(field -> {
+			BasicPropertyAssociation fieldAssociation = recordValue.createOwnedFieldValue();
+			fieldAssociation.setProperty(loadField(resourceSet, E__URI, E__NAME));
+			fieldAssociation.setOwnedValue(field.toPropertyExpression(resourceSet));
+		});
 		return recordValue;
 	}
 	
@@ -177,7 +203,8 @@ public class MixedTrustTask extends GeneratedRecord {
 				period,
 				deadline,
 				guesttask,
-				hypertask
+				hypertask,
+				e
 		);
 	}
 	
@@ -194,7 +221,8 @@ public class MixedTrustTask extends GeneratedRecord {
 				&& Objects.equals(this.period, other.period)
 				&& Objects.equals(this.deadline, other.deadline)
 				&& Objects.equals(this.guesttask, other.guesttask)
-				&& Objects.equals(this.hypertask, other.hypertask);
+				&& Objects.equals(this.hypertask, other.hypertask)
+				&& Objects.equals(this.e, other.e);
 	}
 	
 	@Override
@@ -230,6 +258,12 @@ public class MixedTrustTask extends GeneratedRecord {
 			builder.append(" => reference (");
 			builder.append(field.getName());
 			builder.append(");");
+		});
+		this.e.ifPresent(field -> {
+			builder.append(E__NAME);
+			builder.append(" => ");
+			builder.append(field);
+			builder.append(';');
 		});
 		builder.append(']');
 		return builder.toString();
