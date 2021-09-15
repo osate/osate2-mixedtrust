@@ -17,6 +17,11 @@ property set Mixed_Trust_Properties is
 		GuestTask: reference (Thread);
 		-- Reference to the hyper task thread.  Thread should only be referenced by a single mixed trust task
 		HyperTask: reference (Thread);	
+		
+		-- The "E" Value of the mixed trust task.  Effectively the deadline of the guest task, but also
+		-- duration of the time used in the hypervisor used to activate the hypertask if the guest task
+		-- does not meet its deadline.
+		E: Time;
 	);
 	
 	Mixed_Trust_Tasks: list of Mixed_Trust_Properties::Mixed_Trust_Task applies to (System);
