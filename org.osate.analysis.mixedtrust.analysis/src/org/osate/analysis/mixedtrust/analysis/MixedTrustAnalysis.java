@@ -142,7 +142,6 @@ public final class MixedTrustAnalysis {
 		return analyzeBody(pm, systemInstance);
 	}
 
-	// TODO: Return AnalysisResult object
 	private AnalysisResult analyzeBody(final IProgressMonitor monitor, final SystemInstance systemInstance) {
 		final AnalysisResult analysisResult = ResultUtil.createAnalysisResult(ANALYSIS_RESULT_LABEL, systemInstance);
 		analysisResult.setResultType(ResultType.SUCCESS);
@@ -150,6 +149,13 @@ public final class MixedTrustAnalysis {
 
 		final SOMIterator soms = new SOMIterator(systemInstance);
 		while (soms.hasNext()) {
+			// TODO: Check monitor for being cancelled
+
+			/*
+			 * XXX: General question, do system operation modes mess up property lookup? Are we guaranteed that the referenced
+			 * components actually exist in the som?
+			 */
+
 			final SystemOperationMode som = soms.nextSOM();
 			final Result somResult = ResultUtil.createResult(
 					Aadl2Util.isPrintableSOMName(som) ? Aadl2Util.getPrintableSOMMembers(som) : EMPTY_STRING, som,
@@ -212,9 +218,6 @@ public final class MixedTrustAnalysis {
 				final boolean isSchedulable = scheduler.isSchedulable();
 				ResultUtil.addBooleanValue(processorResult, isSchedulable);
 
-				System.out.println(String.format("%n*** Mixed trust tasks on processor %s%n  isSchedulable = %b",
-						processor.getInstanceObjectPath(), isSchedulable));
-
 				if (isSchedulable) {
 					final Iterator<MixedTrustTask> mttDefIter = domains.getTasksForProcessor(processor).iterator();
 					for (final edu.cmu.sei.mtzsrm.MixedTrustTask mtt : taskList) {
@@ -229,18 +232,11 @@ public final class MixedTrustAnalysis {
 						ResultUtil.addStringValue(mttResult, mttTaskDef.getGuesttask().get().getInstanceObjectPath());
 						// Record fields have been checked for existence already, shouldn't fail
 						ResultUtil.addStringValue(mttResult, mttTaskDef.getHypertask().get().getInstanceObjectPath());
-						System.out.println(String.format(
-								"  %s (%s, %s) E = %d",
-								mttTaskDef.getName().orElse("(unamed)"),
-								mttTaskDef.getGuesttask().get().getInstanceObjectPath(),
-								mttTaskDef.getHypertask().get().getInstanceObjectPath(), eValue));
 					}
 				}
 			}
 
-			// TODO: Check monitor for being cancelled
 
-			// TODO: Modes and property look up-- check that referenced components exist
 
 		}
 		monitor.done();
@@ -534,6 +530,10 @@ public final class MixedTrustAnalysis {
 
 	// ======================================================================
 
+	/*
+	 * This class became more complicated than I intended. Probably means I really should have had a
+	 * formal analysis model for this analysis.
+	 */
 	private static final class Domains {
 		/* Use lists to guarantee a consistent order in the output of results. */
 
