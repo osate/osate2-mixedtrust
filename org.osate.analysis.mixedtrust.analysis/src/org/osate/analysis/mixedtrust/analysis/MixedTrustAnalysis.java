@@ -31,7 +31,6 @@ import org.osate.analysis.mixedtrust.contribution.mixedtrustproperties.MixedTrus
 import org.osate.analysis.mixedtrust.contribution.mixedtrustproperties.MixedTrustTask;
 import org.osate.pluginsupport.properties.PropertyUtils;
 import org.osate.result.AnalysisResult;
-import org.osate.result.DiagnosticType;
 import org.osate.result.Result;
 import org.osate.result.ResultType;
 import org.osate.result.util.ResultUtil;
@@ -283,7 +282,8 @@ public final class MixedTrustAnalysis {
 		isBindingOkay &= checkVirtualProcessor(result, where, processor, hyperVisor, HYPER_VISOR);
 
 		if (guestOS != null && guestOS == hyperVisor) {
-			error(result, where, ERR_MIXED_TRUST_BINDINGS_SAME_VALUE, guestOS.getName());
+			Object[] args = { guestOS.getName() };
+			ResultUtil.addError(result, where, ERR_MIXED_TRUST_BINDINGS_SAME_VALUE, args);
 			isBindingOkay = false;
 		}
 
@@ -291,7 +291,8 @@ public final class MixedTrustAnalysis {
 			/* Check that only guestOS and hyperVisor are bound to the processor */
 			for (final ComponentInstance ci : getBoundVirtualProcessors(processor)) {
 				if (ci != guestOS && ci != hyperVisor) {
-					error(result, processor, ERR_MIXED_TRUST_BINDINGS_EXTRA_BINDING, ci.getName(), processor.getName());
+					Object[] args = { ci.getName(), processor.getName() };
+					ResultUtil.addError(result, processor, ERR_MIXED_TRUST_BINDINGS_EXTRA_BINDING, args);
 					isBindingOkay = false;
 				}
 			}
@@ -307,18 +308,20 @@ public final class MixedTrustAnalysis {
 			final InstanceObject virtualProc, final String fieldName) {
 		boolean isReferenceOkay = true;
 		if (virtualProc == null) {
-			error(result, where, ERR_MIXED_TRUST_BINDINGS_MUST_SPECIFY_FIELD, fieldName);
+			Object[] args = { fieldName };
+			ResultUtil.addError(result, where, ERR_MIXED_TRUST_BINDINGS_MUST_SPECIFY_FIELD, args);
 			isReferenceOkay = false;
 		} else {
 			final List<InstanceObject> processorBindings = getProcessorBindings(virtualProc);
 			if (!processorBindings.contains(processor)) {
 				// error: not directly bound to processor
-				error(result, where, ERR_MIXED_TRUST_BINDINGS_NOT_BOUND, virtualProc.getName(), fieldName,
-						processor.getName());
+				Object[] args = { virtualProc.getName(), fieldName, processor.getName() };
+				ResultUtil.addError(result, where, ERR_MIXED_TRUST_BINDINGS_NOT_BOUND, args);
 				isReferenceOkay = false;
 			}
 			if (countBoundProcessors(processorBindings) > 1) {
-				error(result, where, ERR_MIXED_TRUST_BINDINGS_BOUND_TO_MORE_THAN_ONE, virtualProc.getName(), fieldName);
+				Object[] args = { virtualProc.getName(), fieldName };
+				ResultUtil.addError(result, where, ERR_MIXED_TRUST_BINDINGS_BOUND_TO_MORE_THAN_ONE, args);
 				isReferenceOkay = false;
 			}
 		}
@@ -348,11 +351,13 @@ public final class MixedTrustAnalysis {
 			final Domains domains) {
 		boolean isTaskOkay = true;
 		if (mtt.getPeriod().isEmpty()) {
-			error(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, PERIOD);
+			Object[] args = { PERIOD };
+			ResultUtil.addError(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, args);
 			isTaskOkay = false;
 		}
 		if (mtt.getDeadline().isEmpty()) {
-			error(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, DEADLINE);
+			Object[] args = { DEADLINE };
+			ResultUtil.addError(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, args);
 			isTaskOkay = false;
 		}
 
@@ -373,7 +378,8 @@ public final class MixedTrustAnalysis {
 
 			if (boundProcs1.size() == 1 && boundProcs2.size() == 1) {
 				if (boundProcs1.get(0) != boundProcs2.get(0)) {
-					error(result, where, ERR_MIXED_TRUST_TASK_BOUND_TO_DIFFERENT_PROCESSORS);
+					Object[] args = {};
+					ResultUtil.addError(result, where, ERR_MIXED_TRUST_TASK_BOUND_TO_DIFFERENT_PROCESSORS, args);
 					isTaskOkay = false;
 				} else {
 					/*
@@ -398,28 +404,34 @@ public final class MixedTrustAnalysis {
 			final Function<ComponentInstance, Boolean> checkTaskMembership,
 			final BiFunction<ComponentInstance, ComponentInstance, Boolean> addBoundTask, final String fieldName) {
 		if (task == null) {
-			error(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, fieldName);
+			Object[] args = { fieldName };
+			ResultUtil.addError(result, where, ERR_MIXED_TRUST_TASK_MUST_SPECIFY_FIELD, args);
 			return null;
 		} else {
 			boolean isOkay = true;
 
 			if (TimingProperties.getComputeExecutionTime(task).isEmpty()) {
-				error(result, where, ERR_MIXED_TRUST_TASK_NO_EXECUTION_TIME, fieldName, task.getName());
+				Object[] args = { fieldName, task.getName() };
+				ResultUtil.addError(result, where, ERR_MIXED_TRUST_TASK_NO_EXECUTION_TIME, args);
 				isOkay = false;
 			}
 			if (TimingProperties.getPeriod(task).isPresent()) {
-				warning(result, where, WARNING_MIXED_TRUST_TASK_SPECIFIES_VALUE, fieldName, task.getName(), PERIOD);
+				Object[] args = { fieldName, task.getName(), PERIOD };
+				ResultUtil.addWarning(result, where, WARNING_MIXED_TRUST_TASK_SPECIFIES_VALUE, args);
 			}
 			if (TimingProperties.getDeadline(task).isPresent()) {
-				warning(result, where, WARNING_MIXED_TRUST_TASK_SPECIFIES_VALUE, fieldName, task.getName(), DEADLINE);
+				Object[] args = { fieldName, task.getName(), DEADLINE };
+				ResultUtil.addWarning(result, where, WARNING_MIXED_TRUST_TASK_SPECIFIES_VALUE, args);
 			}
 
 			final List<InstanceObject> boundProcs = getProcessorBindings(task);
 			if (boundProcs.isEmpty()) {
-				error(result, where, ERR_MIXED_TRUST_TASK_UNBOUND_THREAD, fieldName, task.getName());
+				Object[] args = { fieldName, task.getName() };
+				ResultUtil.addError(result, where, ERR_MIXED_TRUST_TASK_UNBOUND_THREAD, args);
 				return null;
 			} else if (boundProcs.size() > 1) {
-				error(result, where, ERR_MIXED_TRUST_TASK_THREAD_BOUND_TO_MORE_THAN_ONE, fieldName, task.getName());
+				Object[] args = { fieldName, task.getName() };
+				ResultUtil.addError(result, where, ERR_MIXED_TRUST_TASK_THREAD_BOUND_TO_MORE_THAN_ONE, args);
 
 				for (final InstanceObject p : boundProcs) {
 					addBoundTask.apply((ComponentInstance) p, task);
@@ -428,8 +440,8 @@ public final class MixedTrustAnalysis {
 			} else {
 				final ComponentInstance boundTo = (ComponentInstance) boundProcs.get(0);
 				if (!checkTaskMembership.apply(boundTo)) {
-					error(result, where, ERR_MIXED_TRUST_TASK_THREAD_NOT_BOUND_TO_RECOGNIZED, fieldName, task.getName(),
-							fieldName);
+					Object[] args = { fieldName, task.getName(), fieldName };
+					ResultUtil.addError(result, where, ERR_MIXED_TRUST_TASK_THREAD_NOT_BOUND_TO_RECOGNIZED, args);
 					isOkay = false;
 				} else {
 					addBoundTask.apply(boundTo, task);
@@ -437,23 +449,6 @@ public final class MixedTrustAnalysis {
 				return isOkay ? boundTo : null;
 			}
 		}
-	}
-
-	// ======================================================================
-	// == Error reporting methods for the visitor
-	// ==
-	// == XXX: Taken from NewBusLoadAnalysis --- should possibly move to the superclass
-	// ======================================================================
-
-	private static void error(final Result result, final EObject io, final String formatString, final Object... args) {
-		result.getDiagnostics()
-				.add(ResultUtil.createDiagnostic(String.format(formatString, args), io, DiagnosticType.ERROR));
-	}
-
-	private static void warning(final Result result, final EObject io, final String formatString,
-			final Object... args) {
-		result.getDiagnostics()
-				.add(ResultUtil.createDiagnostic(String.format(formatString, args), io, DiagnosticType.WARNING));
 	}
 
 	// ======================================================================
@@ -664,8 +659,8 @@ public final class MixedTrustAnalysis {
 			for (final InstanceObject boundTo : bindings) {
 				final List<ComponentInstance> declaredBindings = domainMap.get(boundTo);
 				if (declaredBindings != null && !declaredBindings.contains(threadOrVP)) {
-					MixedTrustAnalysis.error(result, boundTo, ERR_BOUND_BUT_NOT_IDENTIFIED, threadOrVP.getName(),
-							domainName, boundTo.getName());
+					Object[] args = { threadOrVP.getName(), domainName, boundTo.getName() };
+					ResultUtil.addError(result, boundTo, ERR_BOUND_BUT_NOT_IDENTIFIED, args);
 					isOkay = false;
 				}
 			}
