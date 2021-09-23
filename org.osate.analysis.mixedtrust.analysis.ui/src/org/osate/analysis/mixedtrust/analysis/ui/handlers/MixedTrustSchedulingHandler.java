@@ -47,11 +47,13 @@ public final class MixedTrustSchedulingHandler extends AbstractAnalysisHandler {
 	}
 
 	private final class MixedTrustJob extends WorkspaceJob {
+		private static final String JOB_NAME_PREFIX = "Mixed trust scheduling analysis of ";
+
 		private final IFile aaxlFile;
 		private final IFile outputFile;
 
 		public MixedTrustJob(final IFile aaxlFile, final IFile outputFile) {
-			super("Mixed trust scheduling analysis of " + aaxlFile.getName());
+			super(JOB_NAME_PREFIX + aaxlFile.getName());
 			this.aaxlFile = aaxlFile;
 			this.outputFile = outputFile;
 		}
@@ -74,7 +76,6 @@ public final class MixedTrustSchedulingHandler extends AbstractAnalysisHandler {
 				generateMarkers(analysisResult, errManager);
 				subMonitor.worked(1);
 				new ResultWriter(outputFile).writeAnalysisResults(analysisResult, subMonitor.split(1));
-//				writeCSVFile(analysisResult, outputFile, subMonitor.split(1));
 			} catch (final OperationCanceledException e) {
 				cancelled = true;
 			}
@@ -84,14 +85,19 @@ public final class MixedTrustSchedulingHandler extends AbstractAnalysisHandler {
 
 	}
 
-	// ============================================================
-	// == XXX: Should move this to the superclass, or otherwise
-	// == abstract it somehow
-	// ============================================================
-
 	// === CSV Output methods ===
 
 	private static final class ResultWriter extends CSVAnalysisResultWriter {
+		private static final String PROCESSOR_HEADER_FORMAT = "Mixed trust tasks on processor %s %s schedulable";
+		private static final String ARE = "are";
+		private static final String ARE_NOT = "are not";
+
+		private static final String MIXED_TASK_NAME_HEADER = "Mixed Task Name";
+		private static final String GUEST_TASK_THREAD_HEADER = "Guest Task Thread";
+		private static final String HYPER_TASK_THREAD_HEADER = "Hyper Task Thread";
+		private static final String E_HEADER = "E";
+		private static final String E_VALUE_FORMAT = "%d microseconds";
+
 		protected ResultWriter(final IFile outputFile) {
 			super(outputFile);
 		}
@@ -119,14 +125,14 @@ public final class MixedTrustSchedulingHandler extends AbstractAnalysisHandler {
 
 		private void generateContentforProcessor(final PrintWriter pw, final Result processorResult,
 				final IProgressMonitor monitor) {
-			printItem(pw, String.format("Mixed trust tasks on processor %s %s schedulable",
-					processorResult.getMessage(), ResultUtil.getBoolean(processorResult, 0) ? "are" : "are not"));
+			printItem(pw, String.format(PROCESSOR_HEADER_FORMAT,
+					processorResult.getMessage(), ResultUtil.getBoolean(processorResult, 0) ? ARE : ARE_NOT));
 			pw.println();
 
 			final int size = processorResult.getSubResults().size();
 			final SubMonitor subMonitor = SubMonitor.convert(monitor, size);
 			if (size > 0) {
-				printItems(pw, "Mixed Task Name", "Guest Task Thread", "Hyper Task Thread", "E");
+				printItems(pw, MIXED_TASK_NAME_HEADER, GUEST_TASK_THREAD_HEADER, HYPER_TASK_THREAD_HEADER, E_HEADER);
 				processorResult.getSubResults().forEach(tr -> generateContentforTask(pw, tr, subMonitor.split(1)));
 			}
 			pw.println();
@@ -137,104 +143,8 @@ public final class MixedTrustSchedulingHandler extends AbstractAnalysisHandler {
 			final SubMonitor subMonitor = SubMonitor.convert(monitor, 1);
 			printItems(pw, taskResult.getMessage(), ResultUtil.getString(taskResult, 1),
 					ResultUtil.getString(taskResult, 2),
-					String.format("%d microseconds", ResultUtil.getInteger(taskResult, 0)));
+					String.format(E_VALUE_FORMAT, ResultUtil.getInteger(taskResult, 0)));
 			subMonitor.split(1);
 		}
 	}
-
-//	private static void writeCSVFile(final AnalysisResult analysisResult, final IFile outputFile,
-//			final IProgressMonitor monitor) {
-//		final String csvContent = getCSVasString(analysisResult);
-//		final InputStream inputStream = new ByteArrayInputStream(csvContent.getBytes());
-//
-//		try {
-//			if (outputFile.exists()) {
-//				outputFile.setContents(inputStream, true, true, monitor);
-//			} else {
-//				outputFile.create(inputStream, true, monitor);
-//			}
-//		} catch (final CoreException e) {
-//			Activator.logThrowable(e);
-//		}
-//	}
-//
-//	private static String getCSVasString(final AnalysisResult analysisResult) {
-//		final StringWriter writer = new StringWriter();
-//		final PrintWriter pw = new PrintWriter(writer);
-//		generateCSVforAnalysis(pw, analysisResult);
-//		pw.close();
-//		return writer.toString();
-//	}
-//
-//	private static void generateCSVforAnalysis(final PrintWriter pw, final AnalysisResult analysisResult) {
-//		pw.println(analysisResult.getMessage());
-//		pw.println();
-//		pw.println();
-//		analysisResult.getResults().forEach(somResult -> generateCSVforSOM(pw, somResult));
-//	}
-//
-//	private static void generateCSVforSOM(final PrintWriter pw, final Result somResult) {
-//		if (Aadl2Util.isPrintableSOMName((SystemOperationMode) somResult.getModelElement())) {
-//			printItem(pw, "Analysis results in modes " + somResult.getMessage());
-//			pw.println();
-//		}
-//
-//		/*
-//		 * Output the diagnostics (only at the SOM level)
-//		 */
-//		if (!somResult.getDiagnostics().isEmpty()) {
-//			generateCSVforDiagnostics(pw, somResult.getDiagnostics());
-//			pw.println();
-//		}
-//
-//		/*
-//		 * Output results for each processor
-//		 */
-//		somResult.getSubResults().forEach(pr -> generateCSVforProcessor(pw, pr));
-//		pw.println();
-//	}
-//
-//	private static void generateCSVforProcessor(final PrintWriter pw, final Result processorResult) {
-//		printItem(pw, String.format("Mixed trust tasks on processor %s %s schedulable", processorResult.getMessage(),
-//				ResultUtil.getBoolean(processorResult, 0) ? "are" : "are not"));
-//		pw.println();
-//
-//		processorResult.getSubResults().forEach(tr -> generateCSVforTask(pw, tr));
-//		pw.println();
-//	}
-//
-//	private static void generateCSVforTask(final PrintWriter pw, final Result taskResult) {
-//		printItems(pw, taskResult.getMessage(), ResultUtil.getString(taskResult, 1),
-//				ResultUtil.getString(taskResult, 2),
-//				String.format("%d microseconds", ResultUtil.getInteger(taskResult, 0)));
-//	}
-//
-//	// ==== Low-level CSV format, this should be abstracted somewhere
-//
-//	private static void generateCSVforDiagnostics(final PrintWriter pw, final List<Diagnostic> diagnostics) {
-//		for (final Diagnostic issue : diagnostics) {
-//			printItem(pw, issue.getDiagnosticType().getName() + ": " + issue.getMessage());
-//			pw.println();
-//		}
-//	}
-//
-//	private static void printItems(final PrintWriter pw, final String item1, final String... items) {
-//		printItem(pw, item1);
-//		for (final String nextItem : items) {
-//			printSeparator(pw);
-//			printItem(pw, nextItem);
-//		}
-//		pw.println();
-//	}
-//
-//	private static void printItem(final PrintWriter pw, final String item) {
-//		// TODO: Doesn't handle quotes in the item!
-//		pw.print('"');
-//		pw.print(item);
-//		pw.print('"');
-//	}
-//
-//	private static void printSeparator(final PrintWriter pw) {
-//		pw.print(",");
-//	}
 }
