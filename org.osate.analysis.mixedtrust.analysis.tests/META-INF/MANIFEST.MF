@@ -6,7 +6,7 @@ Bundle-Version: 1.0.0.qualifier
 Automatic-Module-Name: org.osate.analysis.mixedtrust.analysis.test
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Require-Bundle: org.osate.aadl2;bundle-version="4.0.2",
- org.osate.xtext.aadl2;bundle-version="7.0.0",
+ org.osate.xtext.aadl2;bundle-version="6.0.0",
  org.osate.aadl2.instantiation;bundle-version="1.1.4",
  org.osate.results;bundle-version="3.0.0",
  org.osate.testsupport;bundle-version="3.0.0",

@@ -70,13 +70,13 @@ import edu.cmu.sei.mtzsrm.LayeredTrustExactScheduler;
  *           <li>values[0] = TRUE or FALSE indicating whether the processor's tasks are schedulable (BooleanValue)
  *           <li>diagnostics = empty list
  *           <li>subResults = one {@Result} for each mixed trust task that is bound to the processor via a <code>Mixed_Trust_Properties::Mixed_Trust_Tasks</code>
- *           property association.  Results are in the order that the Mixed_Trust_Task records appear in the list associated with the property.
- *           The subResult list only exists if the tasks are schedulable.
+ *           property association.  Results are in the order that the <code>Mixed_Trust_Task</code> records appear in the list associated with the property.
+ *           The subResults list only exists if the tasks are schedulable.
  *             <ul>
  *               <li>modelElement = The Aadl EMF PropertyValue object that corresponds to the task record property value
  *               <li>resultType = SUCCESS
  *               <li>message =  name of the mixed trust task as taken from the name field of the record
- *               <li>values[0] = The E value for the mixed trust task (IntegerValue) in microseconds
+ *               <li>values[0] = The E value for the mixed trust task in microseconds (IntegerValue)
  *               <li>values[1] = The component path of the mixed trust task's guest task thread (StringValue)
  *               <li>values[2] = The component path of the mixed trust task's hyper task thread (StringValue)
  *               <li>diagnostics = empty list
