@@ -1,0 +1,92 @@
+package Example
+public
+	with Mixed_Trust_Properties;
+
+	process MixedTrustTask
+	end MixedTrustTask;
+	
+	process implementation MixedTrustTask.basicMTT
+		subcomponents
+			GuestThread: thread;
+			HyperThread: thread;
+	end MixedTrustTask.basicMTT;
+	
+	-- ================================================================================
+	
+	system TestBasicTwoTasks
+	end TestBasicTwoTasks;
+	
+	system implementation TestBasicTwoTasks.impl
+		subcomponents
+			P: processor;
+			
+			GuestOS: virtual processor;
+			HyperVisor: virtual processor;
+
+			MixedTrust1: process MixedTrustTask.k1;
+			MixedTrust2: process MixedTrustTask.k2;
+			
+		properties
+			Actual_Processor_Binding => (reference(P)) applies to GuestOS, HyperVisor;			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOS => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to P;
+
+			Actual_Processor_Binding => (reference(GuestOS)) applies to MixedTrust1.GuestThread, MixedTrust2.GuestThread;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to MixedTrust1.HyperThread, MixedTrust2.HyperThread;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks => (
+				[Name => "MT 1"; Period => 8 ms; Deadline => 8 ms; GuestTask => reference(MixedTrust1.GuestThread); HyperTask => reference(MixedTrust1.HyperThread);],
+				[Name => "MT 2"; Period => 14 ms; Deadline => 14 ms; GuestTask => reference(MixedTrust2.GuestThread); HyperTask => reference(MixedTrust2.HyperThread);]
+			);	
+	end TestBasicTwoTasks.impl;
+
+	process implementation MixedTrustTask.k1
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 4ms .. 4ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 0ms .. 0ms;
+			};
+	end MixedTrustTask.k1;
+	
+	process implementation MixedTrustTask.k2
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 2ms .. 2ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 3ms .. 3ms;
+			};
+	end MixedTrustTask.k2;
+
+	-- ================================================================================
+
+	processor MixedTrustProcessor
+	end MixedTrustProcessor;
+
+	processor implementation MixedTrustProcessor.i
+		subcomponents
+			GuestOS: virtual processor;
+			HyperVisor: virtual processor;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOS => reference(GuestOS); HyperVisor => reference(HyperVisor);];
+	end MixedTrustProcessor.i;
+
+	system implementation TestBasicTwoTasks.impl2
+		subcomponents
+			P: processor MixedTrustProcessor.i;
+
+			MixedTrust1: process MixedTrustTask.k1;
+			MixedTrust2: process MixedTrustTask.k2;
+			
+		properties
+			Actual_Processor_Binding => (reference(P.GuestOS)) applies to MixedTrust1.GuestThread, MixedTrust2.GuestThread;
+			Actual_Processor_Binding => (reference(P.HyperVisor)) applies to MixedTrust1.HyperThread, MixedTrust2.HyperThread;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks => (
+				[Name => "MT 1"; Period => 8 ms; Deadline => 8 ms; GuestTask => reference(MixedTrust1.GuestThread); HyperTask => reference(MixedTrust1.HyperThread);],
+				[Name => "MT 2"; Period => 14 ms; Deadline => 14 ms; GuestTask => reference(MixedTrust2.GuestThread); HyperTask => reference(MixedTrust2.HyperThread);]
+			);	
+	end TestBasicTwoTasks.impl2;
+
+end Example;

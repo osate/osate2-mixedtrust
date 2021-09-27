@@ -24,7 +24,7 @@
 				<configuration>
 					<inputDirectory>${project.basedir}/help/markdown/</inputDirectory>
 					<outputDirectory>${project.basedir}/help/html/</outputDirectory>
-					<copyDirectories>images,css</copyDirectories>
+					<copyDirectories>images,css,aadl</copyDirectories>
 					<attributes>
 						<attribute>BlockQuote|style="font-size:90%"</attribute>
 					</attributes>

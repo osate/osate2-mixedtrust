@@ -51,10 +51,12 @@ The analysis finds each processor in the instance model that is marked as a mixe
 
 A processor is declared to be a mixed trust processor by associating the processor with the property `Mixed_Trust_Properties::Mixed_Trust_Processor`.  The value of this property is a record of type of `Mixed_Trust_Properties::Mixed_Trust_Bindings`:
 
+```
 	Mixed_Trust_Bindings: type record (
 		GuestOS: reference (virtual processor);
 		HyperVisor: reference (virtual processor);
 	);
+```
 
 Basically, the concepts of *guest operating system* and *hypervisor* are modeled by binding virtual processors to the processor.  This record value is used to declare which virtual processor is the guest operating system and which is the hypervisor.  The analysis generates error markers if
 
@@ -63,6 +65,65 @@ Basically, the concepts of *guest operating system* and *hypervisor* are modeled
 * The referenced virtual processors are not *bound* to the processor to which the `Mixed_Trust_Processor` property is associated.
 
 Here *bound* means an AADL binding either through an `Actual_Processor_Binding` property assocation on the virtual propcessor or by the virtual processor being a subcomponent of the processor.  The exaples below show both ways of doing things.
+
+#### Examples
+
+Here we show a portion of a `system implemation` that declares a processor subcomponent to be a mixed trust processor:
+
+```
+	system implementation TestBasicTwoTasks.impl
+		subcomponents
+			P: processor;
+			
+			GuestOS: virtual processor;
+			HyperVisor: virtual processor;
+
+			// ...
+						
+		properties
+			Actual_Processor_Binding => 
+				reference(P)) applies to GuestOS, HyperVisor;			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [
+				GuestOS => reference(GuestOS);
+				HyperVisor => reference(HyperVisor);] applies to P;
+
+			// ...
+	end TestBasicTwoTasks.impl;
+```
+
+The two main points to note are
+
+1. The `viritual processor` subcomponents `GustOS` and `HyperVisor` are bound to the `processor` subcompnent `P` via an `Actual_Processor_Binding` property association.
+2. The processor subcomponent is declare to be a mixed trust processor via the `Mixed_Trust_Processor` property association.  Furthermore, the record value of the property association declares the subcomponent `GuestOS` to be the guest operation system and the subcmponent `HyperVisor` to be the hypervisor.
+
+Alternatively, the virtual processors could be made subcomponents of the processor:
+
+```
+	processor MixedTrustProcessor
+	end MixedTrustProcessor;
+
+	processor implementation MixedTrustProcessor.i
+		subcomponents
+			GuestOS: virtual processor;
+			HyperVisor: virtual processor;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [
+				GuestOS => reference(GuestOS);
+				HyperVisor => reference(HyperVisor);];
+	end MixedTrustProcessor.i;
+
+	system implementation TestBasicTwoTasks.impl2
+		subcomponents
+			P: processor MixedTrustProcessor.i;
+
+			// ...
+		
+		properties
+			// ...
+	end TestBasicTwoTasks.impl2;
+```
+
+In this case, no `Actual_Processor_Binding` property assoction is required for the `virutal processor` subcompnents.  The fact that they are subcomponents of the `processor` component is enough.  The `processor` classifier has a `Mixed_Trust_Processor` property association.  This proeprty association could still be made a contained property association in the `system` implementation.  AADL provides flexibility in how models are built and expressed. 
 
 ### Specifying Mixed Trust Tasks
 
@@ -73,8 +134,9 @@ A mixed trust task is made up of two threads:
 
 The overall mixed trust task has its own period, deadline, and *E* value.    The *E* value is actually calculated by the scheduling algorithm, so it is not required to be specified in the model. 
 
-Mixed trust tasks are declared by a `Mixed_Trust_Properties::Mixed_Trust_Tasks` property association on the `system` component whose containment hierarchy contains the mixed the processor and the individual thread components.  The value of the property is a list of Mixed_Trust_Task records:
+Mixed trust tasks are declared by a `Mixed_Trust_Properties::Mixed_Trust_Tasks` property association on the `system` component whose containment hierarchy contains the mixed the processor and the individual thread components.  The value of the property is a list of `Mixed_Trust_Task` records:
 
+```
 	Mixed_Trust_Task: type record (
 		-- A task name to improve readability of the results
 		Name: aadlstring;
@@ -98,8 +160,9 @@ Mixed trust tasks are declared by a `Mixed_Trust_Properties::Mixed_Trust_Tasks` 
 		-- does not meet its deadline.
 		E: Time;
 	);
+```
 
-The `name` field is optional, but it helps to provide a human-readable name in the output of the analysis.  The `period` and `deadline` fields declare the period and deadline of the overall mixed trust task.  These values must be specified; the analysis generates error markers if they are not.  Fields `GuestTask` and `HyperTask` reference thread components that are the guest operation system task and hypervisor task, respecitively.  Finally, `E` allows the *E* value to be annoted on the model.  Again, this value is calculated by the analysis, it any specified value is ignored.  Currently the calculated value must be hand copied into the model.
+The `name` field is optional, but it helps to provide a human-readable name in the output of the analysis.  The `period` and `deadline` fields declare the period and deadline of the overall mixed trust task.  These values must be specified; the analysis generates error markers if they are not.  Fields `GuestTask` and `HyperTask` reference thread components that are the guest operation system task and hypervisor task, respecitively.  Finally, `E` allows the *E* value to be annoted on the model.  Again, this value is calculated by the analysis—any specified value is ignored.  Currently the calculated value must be hand copied into the model.
 
 #### More About Threads
 
@@ -111,7 +174,183 @@ The threads referenced by `GuestTask` and `HyperTask` must be bound to the corre
 
 Each thread is expected to have a `Compute_Execution_Time` property association.  An error marker is generated if it does not.  This propety value is a range; the scheduler uses the maximum value.
 
-Normally in AADL a thread is expected to have property associations for `Period` and `Deadline`.  In this case, however, the period and deadline is taken from the `Mixed_Trust_Task` record.  The analysis outputs warnings indicating that these values are not used when threads have period and deadline values.
+Normally in AADL a thread is expected to have property associations for `Period` and `Deadline`.  In this case, however, the period and deadline are taken from the `Mixed_Trust_Task` record.  The analysis outputs warnings indicating that these values are not used when threads have period and deadline values.
+
+#### Examples
+
+In this example we use a `MixedTrustTask` `process` classifier to organize the parts of a mixed trust task.  This is not required by the analysis; it is merely an example of how the tasks may be structured.  There is currently no requirement that the `thread` for the guest operationg task and the `thread` for the hypervisor task are even in the same `process`.  The example has two mixed trust thread tasks `MixedTrust1` and `MixedTrust2` as subcomponents of the system implementation.
+
+```
+	process implementation MixedTrustTask.basicMTT
+		subcomponents
+			GuestThread: thread;
+			HyperThread: thread;
+	end MixedTrustTask.basicMTT;
+	
+	system implementation TestBasicTwoTasks.impl
+		subcomponents
+			P: processor;
+			
+			GuestOS: virtual processor;
+			HyperVisor: virtual processor;
+
+			MixedTrust1: process MixedTrustTask.k1;
+			MixedTrust2: process MixedTrustTask.k2;
+			
+		properties
+			// ...
+
+			Actual_Processor_Binding => (reference(GuestOS))
+				applies to MixedTrust1.GuestThread, MixedTrust2.GuestThread;
+			Actual_Processor_Binding => (reference(HyperVisor))
+				applies to MixedTrust1.HyperThread, MixedTrust2.HyperThread;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks => (
+				[Name => "MT 1";
+				 Period => 8 ms;
+				 Deadline => 8 ms;
+				 GuestTask => reference(MixedTrust1.GuestThread);
+				 HyperTask => reference(MixedTrust1.HyperThread);],
+				[Name => "MT 2"; 
+				 Period => 14 ms;
+				 Deadline => 14 ms;
+				 GuestTask => reference(MixedTrust2.GuestThread);
+				 HyperTask => reference(MixedTrust2.HyperThread);]
+			);	
+	end TestBasicTwoTasks.impl;
+
+	process implementation MixedTrustTask.k1
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 4ms .. 4ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 0ms .. 0ms;
+			};
+	end MixedTrustTask.k1;
+	
+	process implementation MixedTrustTask.k2
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 2ms .. 2ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 3ms .. 3ms;
+			};
+	end MixedTrustTask.k2;
+```
+
+The important parts in this exampe are
+
+1. The binding of the `GuestThread` subcopmonents of the mixed trust tasks to the guest operating system virtual processor `GuestOS` using an`Actual_Processor_Binding` property association.
+2. The binding of the `HyperThread` subcopmonents of the mixed trust tasks to the hypervisor virtual processor `HyperVisor` using an`Actual_Processor_Binding` property association.
+3. The declaration of the list of mixed trust tasks in the system implementation using a `Mixed_Trust_Tasks` property assocation.  In particular, each mixed trust tasks identifies the appropriate guest os and hypervisor task threads.
+4. The declaration of the task execution times via `Compute_Execution_Time` property assocations on the thread subcomponents  in the process implementation classifiers.  Note that mixed trust task `MixedTrustTask.k1 `effectively has no hypervisor task: the compute time of the hypervisor task is 0.
+
+## The Complete Example
+
+Here is the complete `Example` AADL package.  It has two system implementations `TestBasicTwoTasks.impl` and `TestBasicTwoTasks.impl2`:
+
+* The first explicitly binds `virtual processor` subcompnents to a sibling `processor` subcomponent.
+* The second uses a `procoessor` classifier that declares `virtual processor` subcomponents.
+* The same tasks are declared in both cases.
+
+The AADL package file can be found [here](aadl/Example.aadl),
+
+```
+package Example
+public
+	with Mixed_Trust_Properties;
+
+	process MixedTrustTask
+	end MixedTrustTask;
+	
+	process implementation MixedTrustTask.basicMTT
+		subcomponents
+			GuestThread: thread;
+			HyperThread: thread;
+	end MixedTrustTask.basicMTT;
+	
+	-- ================================================================================
+	
+	system TestBasicTwoTasks
+	end TestBasicTwoTasks;
+	
+	system implementation TestBasicTwoTasks.impl
+		subcomponents
+			P: processor;
+			
+			GuestOS: virtual processor;
+			HyperVisor: virtual processor;
+
+			MixedTrust1: process MixedTrustTask.k1;
+			MixedTrust2: process MixedTrustTask.k2;
+			
+		properties
+			Actual_Processor_Binding => (reference(P)) applies to GuestOS, HyperVisor;			
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOS => reference(GuestOS); HyperVisor => reference(HyperVisor);] applies to P;
+
+			Actual_Processor_Binding => (reference(GuestOS)) applies to MixedTrust1.GuestThread, MixedTrust2.GuestThread;
+			Actual_Processor_Binding => (reference(HyperVisor)) applies to MixedTrust1.HyperThread, MixedTrust2.HyperThread;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks => (
+				[Name => "MT 1"; Period => 8 ms; Deadline => 8 ms; GuestTask => reference(MixedTrust1.GuestThread); HyperTask => reference(MixedTrust1.HyperThread);],
+				[Name => "MT 2"; Period => 14 ms; Deadline => 14 ms; GuestTask => reference(MixedTrust2.GuestThread); HyperTask => reference(MixedTrust2.HyperThread);]
+			);	
+	end TestBasicTwoTasks.impl;
+
+	process implementation MixedTrustTask.k1
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 4ms .. 4ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 0ms .. 0ms;
+			};
+	end MixedTrustTask.k1;
+	
+	process implementation MixedTrustTask.k2
+		subcomponents
+			GuestThread: thread {
+				Compute_Execution_Time => 2ms .. 2ms;
+			};
+			HyperThread: thread {
+				Compute_Execution_Time => 3ms .. 3ms;
+			};
+	end MixedTrustTask.k2;
+
+	-- ================================================================================
+
+	processor MixedTrustProcessor
+	end MixedTrustProcessor;
+
+	processor implementation MixedTrustProcessor.i
+		subcomponents
+			GuestOS: virtual processor;
+			HyperVisor: virtual processor;
+		properties
+			Mixed_Trust_Properties::Mixed_Trust_Processor => [GuestOS => reference(GuestOS); HyperVisor => reference(HyperVisor);];
+	end MixedTrustProcessor.i;
+
+	system implementation TestBasicTwoTasks.impl2
+		subcomponents
+			P: processor MixedTrustProcessor.i;
+
+			MixedTrust1: process MixedTrustTask.k1;
+			MixedTrust2: process MixedTrustTask.k2;
+			
+		properties
+			Actual_Processor_Binding => (reference(P.GuestOS)) applies to MixedTrust1.GuestThread, MixedTrust2.GuestThread;
+			Actual_Processor_Binding => (reference(P.HyperVisor)) applies to MixedTrust1.HyperThread, MixedTrust2.HyperThread;
+			
+			Mixed_Trust_Properties::Mixed_Trust_Tasks => (
+				[Name => "MT 1"; Period => 8 ms; Deadline => 8 ms; GuestTask => reference(MixedTrust1.GuestThread); HyperTask => reference(MixedTrust1.HyperThread);],
+				[Name => "MT 2"; Period => 14 ms; Deadline => 14 ms; GuestTask => reference(MixedTrust2.GuestThread); HyperTask => reference(MixedTrust2.HyperThread);]
+			);	
+	end TestBasicTwoTasks.impl2;
+
+end Example;
+```
 
 ## The CSV File
 
@@ -126,15 +365,23 @@ The content is organized in a top-down manner, sorted in the following order
 	* The componnt path of the thread that is the hypervisor task.
 	* The *E* value of the mixed trust task as computed by the scheduling alogrithm.
 
+### Example
+
+The image below shows the contents of the CSV file that is generated when the system instance for `TestBasicTwoTasks.impl` (above) is analyzed.
+
+![](images/csv.png)
+
 ## Invoking Programmatically
 
 The analysis can be invoked programmatically by other tools by calling the method
 
+```
         AnalysisResult invoke(IProgressMonitor, SystemInstance)
+```
 
 on an instance of the class `MixedTrustAnalysis` in the package `org.osate.analysis.mixedtrust.analysis`.  This is found in the plug-in `org.osate.analysis.mixedtrust.analysis`.
 
-As the signature indicates, the method takes a possibly-`null` progress monitor, and the `SystemInstance` object of the model to analyze.  All the system operation modes of the model are analyzed.
+As the signature indicates, the method takes a possibly `null` progress monitor, and the `SystemInstance` object of the model to analyze.  All the system operation modes of the model are analyzed.
 
 A new instance of the class `MixedTrustAnalysis` should be used for each system instance.   
 
