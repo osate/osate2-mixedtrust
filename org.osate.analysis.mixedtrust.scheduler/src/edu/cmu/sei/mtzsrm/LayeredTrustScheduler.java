@@ -1,50 +1,77 @@
+/**
+ * Mixed-Trust Scheduling Analysis OSATE Plugin
+ *
+ * Copyright 2021 Carnegie Mellon University.
+ *
+ * NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING
+ * INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. CARNEGIE MELLON
+ * UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+ * AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, WARRANTY OF FITNESS FOR
+ * PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF
+ * THE MATERIAL. CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF
+ * ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT
+ * INFRINGEMENT.
+ *
+ * Released under the Eclipse Public License - v 2.0 license, please see
+ * license.txt or contact permission@sei.cmu.edu for full terms.
+ *
+ * [DISTRIBUTION STATEMENT A] This material has been approved for public
+ * release and unlimited distribution.  Please see Copyright notice for
+ * non-US Government use and distribution.
+ *
+ * Carnegie Mellon® is registered in the U.S. Patent and Trademark Office
+ * by Carnegie Mellon University.
+ *
+ * DM21-0927
+ */
+
 package edu.cmu.sei.mtzsrm;
 
 import java.util.ArrayList;
 import java.util.TreeSet;
 
 public class LayeredTrustScheduler {
-	
+
 	public int positiveCeilOrZero(double r){
 		return ((int)Math.max(0, Math.ceil(r)));
 	}
-	
+
 	public int positiveFloorOrZero(double r){
 		return ((int)Math.max(0, Math.floor(r)));
 	}
-	
+
 	TreeSet<MixedTrustTask>decreasingHypertaskPriority = new TreeSet<MixedTrustTask>(new DecreasingPriorityComparator());
 	TreeSet<MixedTrustTask>increasingHypertaskPriority = new TreeSet<MixedTrustTask>(new IncreasingPriorityComparator());
-	
+
 	public TreeSet<MixedTrustTask> getTaskset(){
 		return decreasingHypertaskPriority;
 	}
-	
+
 	public void assignDeadlineMonotonicPriorities(){
 		TreeSet<MixedTrustTask> decreasingDeadlineTaskset = new TreeSet<MixedTrustTask>(new DecreasingDeadlineComparator());
 		decreasingDeadlineTaskset.addAll(this.decreasingHypertaskPriority);
 		this.decreasingHypertaskPriority.clear();
 		this.increasingHypertaskPriority.clear();
-		
+
 		int i=0;
 		for (MixedTrustTask t:decreasingDeadlineTaskset){
 			t.setPriority(i++);
 		}
-		
+
 		this.decreasingHypertaskPriority.addAll(decreasingDeadlineTaskset);
 		this.increasingHypertaskPriority.addAll(decreasingDeadlineTaskset);
 	}
-	
+
 	public double getUtilization(){
 		double util=0.0;
-		
+
 		for (MixedTrustTask t:this.decreasingHypertaskPriority){
 			util += t.getUtilization();
 		}
-		
+
 		return util;
 	}
-	
+
 	public void add(MixedTrustTask t)
 	{
 		this.decreasingHypertaskPriority.add(t);
@@ -55,14 +82,14 @@ public class LayeredTrustScheduler {
 		this.decreasingHypertaskPriority.addAll(tasks);
 		this.increasingHypertaskPriority.addAll(tasks);
 	}
-	
+
 	public int calculatePredictiveHyperTaskNonPreemptiveActivePeriod(MixedTrustTask ti)
 	{
 		int ap=0;
 		int prevap=0;
-		
+
 		PredictiveHyperTask phti = (PredictiveHyperTask) ti.getHyperTask();
-		
+
 		do {
 			prevap = ap;
 			if (prevap == 0){
@@ -83,12 +110,12 @@ public class LayeredTrustScheduler {
 		return ap;
 	}
 
-	
+
 	public int calculateHyperTaskNonPreemptiveActivePeriod(MixedTrustTask ti)
 	{
 		int ap=0;
 		int prevap=0;
-				
+
 		do {
 			prevap = ap;
 			if (prevap == 0){
@@ -105,14 +132,14 @@ public class LayeredTrustScheduler {
 		} while (ap != prevap);
 		return ap;
 	}
-	
+
 	public int getPredictiveMaxLowerPriorityPreemption(MixedTrustTask ti)
 	{
 		int c=0;
 		LowerPriority lp;
-		
+
 		lp = new LowerPriority(increasingHypertaskPriority, ti);
-		
+
 		while(lp.hasNext()){
 			MixedTrustTask mt = lp.next();
 			PredictiveHyperTask pht = (PredictiveHyperTask) mt.getHyperTask();
@@ -120,34 +147,34 @@ public class LayeredTrustScheduler {
 				c = pht.getMaxExecTime();
 			}
 		}
-		
+
 		return c;
 	}
 
-	
+
 	public int getMaxLowerPriorityPreemption(MixedTrustTask ti)
 	{
 		int c=0;
 		LowerPriority lp;
-		
+
 		lp = new LowerPriority(increasingHypertaskPriority, ti);
-		
+
 		while(lp.hasNext()){
 			MixedTrustTask mt = lp.next();
 			if (c<mt.getHyperTask().getExectime()) {
 				c = mt.getHyperTask().getExectime();
 			}
 		}
-		
+
 		return c;
 	}
-	
+
 	public int calculatePredictiveNonPreemptiveStartingTime(MixedTrustTask ti, int job)
 	{
 		int w=0;
 		int prevw=0;
 		int a=0;
-		
+
 		do {
 			prevw = w;
 			w = getPredictiveMaxLowerPriorityPreemption(ti);
@@ -157,9 +184,9 @@ public class LayeredTrustScheduler {
 			}
 			if (prevw == 0) {
 				prevw = w;
-			} 
-			
-			
+			}
+
+
 			MixedTrustTask tj=null;
 			HigherPriority hp = new HigherPriority(decreasingHypertaskPriority, ti);
 			while (hp.hasNext()){
@@ -167,84 +194,84 @@ public class LayeredTrustScheduler {
 				a = (int) Math.floor(((double)prevw)/((double)tj.getPeriod()));
 				w += (a+1) * ((PredictiveHyperTask)tj.getHyperTask()).getPredictiveExecTime();
 				w += calculateNonPreemptiveFrameInterferenceCorrection(tj,prevw);
-			}						
+			}
 		} while (w != prevw);
-		
+
 		return w;
 	}
 
-	
+
 	public int calculateNonPreemptiveStartingTime(MixedTrustTask ti, int job)
 	{
 		int w=0;
 		int prevw=0;
 		int a=0;
-		
+
 		do {
 			prevw = w;
 			w = getMaxLowerPriorityPreemption(ti);
 			w = w + (job * ti.getHyperTask().getExectime());
 			if (prevw == 0) {
 				prevw = w;
-			} 
-			
+			}
+
 			MixedTrustTask tj=null;
 			HigherPriority hp = new HigherPriority(decreasingHypertaskPriority, ti);
 			while (hp.hasNext()){
 				tj = hp.next();
 				a = (int) Math.floor(((double)prevw)/((double)tj.getPeriod()));
 				w += (a+1) * tj.getHyperTask().getExectime();
-			}						
+			}
 		} while (w != prevw);
-		
+
 		return w;
 	}
-	
+
 	public int calculateFrameInterferenceCorrection(MixedTrustTask tj, int t) {
 		int r=0;
-		
+
 		if (!(tj.getHyperTask() instanceof PredictiveHyperTask)) {
 			return 0;
 		}
-		
+
 		PredictiveHyperTask pht = (PredictiveHyperTask) tj.getHyperTask();
-		
+
 		if (pht.getPredictiveExecTime() > pht.getExectime()) {
 			r = - Math.floorDiv(t, tj.getPeriod()*pht.getFramePeriods()) * (pht.getPredictiveExecTime() - pht.getExectime());
-			
+
 		} else {
 			r = (int) (Math.ceil((double)t/ (double)(tj.getPeriod()*pht.getFramePeriods())) * (pht.getExectime()-pht.getPredictiveExecTime()));
 		}
-		
+
 		return r;
 	}
 
 	public int calculateNonPreemptiveFrameInterferenceCorrection(MixedTrustTask tj, int t) {
 		int r=0;
-		
+
 		if (!(tj.getHyperTask() instanceof PredictiveHyperTask)) {
 			return 0;
 		}
-		
+
 		PredictiveHyperTask pht = (PredictiveHyperTask) tj.getHyperTask();
-		
+
 		if (pht.getPredictiveExecTime() > pht.getExectime()) {
 			r = - Math.floorDiv(t, tj.getPeriod()*pht.getFramePeriods()) * (pht.getPredictiveExecTime() - pht.getExectime());
-			
+
 		} else {
 			r = (Math.floorDiv(t,tj.getPeriod()*pht.getFramePeriods())+1) * (pht.getExectime()-pht.getPredictiveExecTime());
 		}
-		
+
 		return r;
 	}
 
 	public int calculateFrameNumJobsInterferenceCorrection(MixedTrustTask tj, int t) {
 		int r;
-		
+
 		if (!(tj.getHyperTask() instanceof PredictiveHyperTask)) {
 			return 0;
 		}
-		
+
 		PredictiveHyperTask pht = (PredictiveHyperTask) tj.getHyperTask();
 
 		if (pht.getPredictiveExecTime() > pht.getExectime()) {
@@ -256,7 +283,7 @@ public class LayeredTrustScheduler {
 		}
 		return r;
 	}
-	
+
 	// HERE: just finished this modification. Now look for the guest task calculation
 	public int calculatePredictiveHypertaskNonPreemptiveResponseTime(MixedTrustTask ti)
 	{
@@ -265,24 +292,24 @@ public class LayeredTrustScheduler {
 		int a=0;
 		int numJobs=0;
 		int w=0;
-		
+
 		a = this.calculatePredictiveHyperTaskNonPreemptiveActivePeriod(ti);
-		
+
 		numJobs = (int) Math.ceil(((double)a)/((double)ti.getPeriod()));
-		
+
 		for (int i=0;i<numJobs;i++){
-			w = this.calculatePredictiveNonPreemptiveStartingTime(ti, i); 
+			w = this.calculatePredictiveNonPreemptiveStartingTime(ti, i);
 			w -= (i * ti.getPeriod());
 			r = ((PredictiveHyperTask)ti.getHyperTask()).getPredictiveExecTime() >0 ? w + ((PredictiveHyperTask)ti.getHyperTask()).getPredictiveExecTime():0;
 			if (r > maxR) {
 				maxR = r;
 			}
 		}
-		
+
 		return maxR;
 	}
 
-	
+
 	public int calculateHypertaskNonPreemptiveResponseTime(MixedTrustTask ti)
 	{
 		int r=0;
@@ -290,28 +317,28 @@ public class LayeredTrustScheduler {
 		int a=0;
 		int numJobs=0;
 		int w=0;
-		
+
 		a = this.calculateHyperTaskNonPreemptiveActivePeriod(ti);
-		
+
 		numJobs = (int) Math.ceil(((double)a)/((double)ti.getPeriod()));
-		
+
 		for (int i=0;i<numJobs;i++){
-			w = this.calculateNonPreemptiveStartingTime(ti, i); 
+			w = this.calculateNonPreemptiveStartingTime(ti, i);
 			w -= (i * ti.getPeriod());
 			r = ti.getHyperTask().getExectime() >0 ? w + ti.getHyperTask().getExectime():0;
 			if (r > maxR) {
 				maxR = r;
 			}
 		}
-		
+
 		return maxR;
 	}
-	
+
 	public int calculateGuestTaskResponseTime(MixedTrustTask ti)
 	{
 		int r=0;
 		int prevR=0;
-		
+
 		do{
 			prevR = r;
 			r = ti.getGuestTask().getExectime(ti.getGuestTask().getCritcality());
@@ -326,7 +353,7 @@ public class LayeredTrustScheduler {
 				}
 				r += ((int)Math.ceil(((double)prevR)/((double)tj.getPeriod()))) * tj.getHyperTask().getExectime();
 			}
-			
+
 			// all higher priority guest tasks
 			HigherPriority hp = new HigherPriority(decreasingHypertaskPriority,ti);
 			while(hp.hasNext()){
@@ -334,10 +361,10 @@ public class LayeredTrustScheduler {
 				r += ((int)Math.ceil(((double)prevR)/((double)tj.getPeriod()))) * tj.getGuestTask().getExectime(tj.getGuestTask().getCritcality());
 			}
 		} while(prevR != r && r <= ti.getDeadline());
-		
+
 		return r;
 	}
-	
+
 	public boolean isPredictiveHypertaskSetSchedulable(){
 		int r=0;
 		// schedule hyper tasks
@@ -351,7 +378,7 @@ public class LayeredTrustScheduler {
 		}
 		return true;
 	}
-	
+
 	public boolean isHypertaskSetSchedulable(){
 		int r=0;
 		// schedule hyper tasks
@@ -365,7 +392,7 @@ public class LayeredTrustScheduler {
 		}
 		return true;
 	}
-	
+
 	public boolean isGuesttaskSetSchedulable(){
 		for (MixedTrustTask ti:decreasingHypertaskPriority){
 			int r = calculateGuestTaskResponseTime(ti);
@@ -375,14 +402,14 @@ public class LayeredTrustScheduler {
 				return false;
 			}
 		}
-		
+
 		return true;
 	}
-	
+
 	public boolean isSchedulable()
 	{
 		// schedule hyper tasks
-		
+
 		if (!isHypertaskSetSchedulable()){
 			return false;
 		}
@@ -391,10 +418,10 @@ public class LayeredTrustScheduler {
 		if (!isGuesttaskSetSchedulable()) {
 			return false;
 		}
-		
+
 		return true;
 	}
-	
+
 	public static void testCanbusExample()
 	{
 		MixedTrustTask mt1 = new MixedTrustTask(
@@ -421,19 +448,19 @@ public class LayeredTrustScheduler {
 				1, // hyper criticality
 				100, // hyper exectime
 				1);   // hyper priority
-		
+
 		LayeredTrustScheduler sched  = new LayeredTrustScheduler();
 		sched.add(mt1);
 		sched.add(mt2);
 		sched.add(mt3);
-				
+
 		System.out.println("Response Times----");
 		for (MixedTrustTask ti:sched.decreasingHypertaskPriority){
 			int r = sched.calculateHypertaskNonPreemptiveResponseTime(ti);
 			System.out.println(r);
 		}
 	}
-	
+
 	public static void testLayeredTrust()
 	{
 		MixedTrustTask mt1 = new MixedTrustTask(
@@ -471,7 +498,7 @@ public class LayeredTrustScheduler {
 			System.out.println(r);
 		}
 	}
-	
+
 	public static void main(String args[])
 	{
 		testLayeredTrust();

@@ -1,3 +1,30 @@
+/**
+ * Mixed-Trust Scheduling Analysis OSATE Plugin
+ *
+ * Copyright 2021 Carnegie Mellon University.
+ *
+ * NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING
+ * INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. CARNEGIE MELLON
+ * UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+ * AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, WARRANTY OF FITNESS FOR
+ * PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF
+ * THE MATERIAL. CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF
+ * ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT
+ * INFRINGEMENT.
+ *
+ * Released under the Eclipse Public License - v 2.0 license, please see
+ * license.txt or contact permission@sei.cmu.edu for full terms.
+ *
+ * [DISTRIBUTION STATEMENT A] This material has been approved for public
+ * release and unlimited distribution.  Please see Copyright notice for
+ * non-US Government use and distribution.
+ *
+ * Carnegie Mellon® is registered in the U.S. Patent and Trademark Office
+ * by Carnegie Mellon University.
+ *
+ * DM21-0927
+ */
+
 package edu.cmu.sei.mtzsrm;
 
 import java.util.Iterator;
@@ -7,7 +34,8 @@ public class HigherPriorityHigherSameGuestCriticality implements Iterator<MixedT
 	MixedTrustTask next=null;
 	MixedTrustTask ti=null;
 	Iterator<MixedTrustTask> iterator;
-	
+
+	@Override
 	public boolean hasNext() {
 		return next != null;
 	}
@@ -26,25 +54,26 @@ public class HigherPriorityHigherSameGuestCriticality implements Iterator<MixedT
 				next = null;
 				break;
 			}
-		}				
+		}
 	}
-	
+
+	@Override
 	public MixedTrustTask next() {
 		MixedTrustTask tmp = next;
 		next = null;
 		findNext();
 		return tmp;
 	}
-	
+
 	public HigherPriorityHigherSameGuestCriticality(TreeSet<MixedTrustTask> set, MixedTrustTask ti){
 		this.ti = ti;
 		this.iterator = set.iterator();
 		findNext();
 	}
-	
+
 	public static void main(String args[]){
 		TreeSet<MixedTrustTask> set = new TreeSet<MixedTrustTask>(new DecreasingPriorityComparator());
-		
+
 		MixedTrustTask mt1 = new MixedTrustTask(
 				100, 	// period
 				100, 	// deadline
@@ -73,11 +102,11 @@ public class HigherPriorityHigherSameGuestCriticality implements Iterator<MixedT
 		set.add(mt1);
 		set.add(mt2);
 		set.add(mt3);
-		
+
 		HigherPriorityHigherSameGuestCriticality hphc = new HigherPriorityHigherSameGuestCriticality(set,mt3);
-		
+
 		MixedTrustTask mt=null;
-		
+
 		while(hphc.hasNext()){
 			mt = hphc.next();
 			System.out.println(mt);
