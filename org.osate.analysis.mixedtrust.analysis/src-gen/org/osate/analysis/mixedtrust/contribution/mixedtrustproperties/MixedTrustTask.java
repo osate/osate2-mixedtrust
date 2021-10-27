@@ -1,3 +1,30 @@
+/**
+ * Mixed-Trust Scheduling Analysis OSATE Plugin
+ *
+ * Copyright 2021 Carnegie Mellon University.
+ *
+ * NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING
+ * INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. CARNEGIE MELLON
+ * UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+ * AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, WARRANTY OF FITNESS FOR
+ * PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF
+ * THE MATERIAL. CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF
+ * ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT
+ * INFRINGEMENT.
+ *
+ * Released under the Eclipse Public License - v 2.0 license, please see
+ * license.txt or contact permission@sei.cmu.edu for full terms.
+ *
+ * [DISTRIBUTION STATEMENT A] This material has been approved for public
+ * release and unlimited distribution.  Please see Copyright notice for
+ * non-US Government use and distribution.
+ *
+ * Carnegie Mellon® is registered in the U.S. Patent and Trademark Office
+ * by Carnegie Mellon University.
+ *
+ * DM21-0927
+ */
+
 package org.osate.analysis.mixedtrust.contribution.mixedtrustproperties;
 
 import java.util.Objects;
@@ -33,14 +60,14 @@ public class MixedTrustTask extends GeneratedRecord {
 	public static final URI GUESTTASK__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.3");
 	public static final URI HYPERTASK__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.4");
 	public static final URI E__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.0/@ownedField.5");
-	
+
 	private final Optional<String> name;
 	private final Optional<IntegerWithUnits<TimeUnits>> period;
 	private final Optional<IntegerWithUnits<TimeUnits>> deadline;
 	private final Optional<InstanceObject> guesttask;
 	private final Optional<InstanceObject> hypertask;
 	private final Optional<IntegerWithUnits<TimeUnits>> e;
-	
+
 	public MixedTrustTask(
 			Optional<String> name,
 			Optional<IntegerWithUnits<TimeUnits>> period,
@@ -56,10 +83,10 @@ public class MixedTrustTask extends GeneratedRecord {
 		this.hypertask = hypertask;
 		this.e = e;
 	}
-	
+
 	public MixedTrustTask(PropertyExpression propertyExpression, NamedElement lookupContext, Optional<Mode> mode) {
 		RecordValue recordValue = (RecordValue) propertyExpression;
-		
+
 		Optional<String> name_local;
 		try {
 			name_local = findFieldValue(recordValue, NAME__NAME).map(field -> {
@@ -70,7 +97,7 @@ public class MixedTrustTask extends GeneratedRecord {
 			name_local = Optional.empty();
 		}
 		this.name = name_local;
-		
+
 		Optional<IntegerWithUnits<TimeUnits>> period_local;
 		try {
 			period_local = findFieldValue(recordValue, PERIOD__NAME).map(field -> {
@@ -81,7 +108,7 @@ public class MixedTrustTask extends GeneratedRecord {
 			period_local = Optional.empty();
 		}
 		this.period = period_local;
-		
+
 		Optional<IntegerWithUnits<TimeUnits>> deadline_local;
 		try {
 			deadline_local = findFieldValue(recordValue, DEADLINE__NAME).map(field -> {
@@ -92,7 +119,7 @@ public class MixedTrustTask extends GeneratedRecord {
 			deadline_local = Optional.empty();
 		}
 		this.deadline = deadline_local;
-		
+
 		Optional<InstanceObject> guesttask_local;
 		try {
 			guesttask_local = findFieldValue(recordValue, GUESTTASK__NAME).map(field -> {
@@ -103,7 +130,7 @@ public class MixedTrustTask extends GeneratedRecord {
 			guesttask_local = Optional.empty();
 		}
 		this.guesttask = guesttask_local;
-		
+
 		Optional<InstanceObject> hypertask_local;
 		try {
 			hypertask_local = findFieldValue(recordValue, HYPERTASK__NAME).map(field -> {
@@ -114,7 +141,7 @@ public class MixedTrustTask extends GeneratedRecord {
 			hypertask_local = Optional.empty();
 		}
 		this.hypertask = hypertask_local;
-		
+
 		Optional<IntegerWithUnits<TimeUnits>> e_local;
 		try {
 			e_local = findFieldValue(recordValue, E__NAME).map(field -> {
@@ -126,31 +153,31 @@ public class MixedTrustTask extends GeneratedRecord {
 		}
 		this.e = e_local;
 	}
-	
+
 	public Optional<String> getName() {
 		return name;
 	}
-	
+
 	public Optional<IntegerWithUnits<TimeUnits>> getPeriod() {
 		return period;
 	}
-	
+
 	public Optional<IntegerWithUnits<TimeUnits>> getDeadline() {
 		return deadline;
 	}
-	
+
 	public Optional<InstanceObject> getGuesttask() {
 		return guesttask;
 	}
-	
+
 	public Optional<InstanceObject> getHypertask() {
 		return hypertask;
 	}
-	
+
 	public Optional<IntegerWithUnits<TimeUnits>> getE() {
 		return e;
 	}
-	
+
 	@Override
 	public RecordValue toPropertyExpression(ResourceSet resourceSet) {
 		if (!name.isPresent()
@@ -195,7 +222,7 @@ public class MixedTrustTask extends GeneratedRecord {
 		});
 		return recordValue;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		return Objects.hash(
@@ -207,7 +234,7 @@ public class MixedTrustTask extends GeneratedRecord {
 				e
 		);
 	}
-	
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -224,7 +251,7 @@ public class MixedTrustTask extends GeneratedRecord {
 				&& Objects.equals(this.hypertask, other.hypertask)
 				&& Objects.equals(this.e, other.e);
 	}
-	
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();

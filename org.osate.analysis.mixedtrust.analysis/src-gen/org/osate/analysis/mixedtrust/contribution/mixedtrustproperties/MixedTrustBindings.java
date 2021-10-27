@@ -1,3 +1,30 @@
+/**
+ * Mixed-Trust Scheduling Analysis OSATE Plugin
+ *
+ * Copyright 2021 Carnegie Mellon University.
+ *
+ * NO WARRANTY. THIS CARNEGIE MELLON UNIVERSITY AND SOFTWARE ENGINEERING
+ * INSTITUTE MATERIAL IS FURNISHED ON AN "AS-IS" BASIS. CARNEGIE MELLON
+ * UNIVERSITY MAKES NO WARRANTIES OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+ * AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO, WARRANTY OF FITNESS FOR
+ * PURPOSE OR MERCHANTABILITY, EXCLUSIVITY, OR RESULTS OBTAINED FROM USE OF
+ * THE MATERIAL. CARNEGIE MELLON UNIVERSITY DOES NOT MAKE ANY WARRANTY OF
+ * ANY KIND WITH RESPECT TO FREEDOM FROM PATENT, TRADEMARK, OR COPYRIGHT
+ * INFRINGEMENT.
+ *
+ * Released under the Eclipse Public License - v 2.0 license, please see
+ * license.txt or contact permission@sei.cmu.edu for full terms.
+ *
+ * [DISTRIBUTION STATEMENT A] This material has been approved for public
+ * release and unlimited distribution.  Please see Copyright notice for
+ * non-US Government use and distribution.
+ *
+ * Carnegie Mellon® is registered in the U.S. Patent and Trademark Office
+ * by Carnegie Mellon University.
+ *
+ * DM21-0927
+ */
+
 package org.osate.analysis.mixedtrust.contribution.mixedtrustproperties;
 
 import java.util.Objects;
@@ -22,10 +49,10 @@ public class MixedTrustBindings extends GeneratedRecord {
 	public static final String HYPERVISOR__NAME = "HyperVisor";
 	public static final URI GUESTOS__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.1/@ownedField.0");
 	public static final URI HYPERVISOR__URI = URI.createURI("platform:/resource/mixedtrust/Mixed_Trust_Properties_set.aadl#/0/@ownedPropertyType.1/@ownedField.1");
-	
+
 	private final Optional<InstanceObject> guestos;
 	private final Optional<InstanceObject> hypervisor;
-	
+
 	public MixedTrustBindings(
 			Optional<InstanceObject> guestos,
 			Optional<InstanceObject> hypervisor
@@ -33,10 +60,10 @@ public class MixedTrustBindings extends GeneratedRecord {
 		this.guestos = guestos;
 		this.hypervisor = hypervisor;
 	}
-	
+
 	public MixedTrustBindings(PropertyExpression propertyExpression, NamedElement lookupContext, Optional<Mode> mode) {
 		RecordValue recordValue = (RecordValue) propertyExpression;
-		
+
 		Optional<InstanceObject> guestos_local;
 		try {
 			guestos_local = findFieldValue(recordValue, GUESTOS__NAME).map(field -> {
@@ -47,7 +74,7 @@ public class MixedTrustBindings extends GeneratedRecord {
 			guestos_local = Optional.empty();
 		}
 		this.guestos = guestos_local;
-		
+
 		Optional<InstanceObject> hypervisor_local;
 		try {
 			hypervisor_local = findFieldValue(recordValue, HYPERVISOR__NAME).map(field -> {
@@ -59,15 +86,15 @@ public class MixedTrustBindings extends GeneratedRecord {
 		}
 		this.hypervisor = hypervisor_local;
 	}
-	
+
 	public Optional<InstanceObject> getGuestos() {
 		return guestos;
 	}
-	
+
 	public Optional<InstanceObject> getHypervisor() {
 		return hypervisor;
 	}
-	
+
 	@Override
 	public RecordValue toPropertyExpression(ResourceSet resourceSet) {
 		if (!guestos.isPresent()
@@ -88,7 +115,7 @@ public class MixedTrustBindings extends GeneratedRecord {
 		});
 		return recordValue;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		return Objects.hash(
@@ -96,7 +123,7 @@ public class MixedTrustBindings extends GeneratedRecord {
 				hypervisor
 		);
 	}
-	
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -109,7 +136,7 @@ public class MixedTrustBindings extends GeneratedRecord {
 		return Objects.equals(this.guestos, other.guestos)
 				&& Objects.equals(this.hypervisor, other.hypervisor);
 	}
-	
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
