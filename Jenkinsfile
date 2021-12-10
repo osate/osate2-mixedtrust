@@ -15,7 +15,7 @@ pipeline {
                     mavenLocalRepo: '.repository'
                 ) {
                     // Run the maven build
-                    sh 'mvn -T 3 -s seisettings.xml clean install -U -Dtycho.disableP2Mirrors=true -DfailIfNoTests=false -Dspotbugs=true'
+                    sh 'mvn -T 3 -s seisettings.xml clean install -U -Dtycho.disableP2Mirrors=true -DfailIfNoTests=false'
                 }
             }
         }
